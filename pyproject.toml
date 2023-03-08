@@ -9,7 +9,11 @@ packages = [{include = "helikite_data_processing"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 pandas = "^1.5.3"
+pydantic = "^1.10.5"
 
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.0.0"
 
 [build-system]
 requires = ["poetry-core"]
