@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional, Union, Callable
 from pydantic import BaseModel
 
 
@@ -17,3 +17,4 @@ class InstrumentConfig(BaseModel):
     comment: str | None = None              # Ignore anything after set char
     names: List[str] | None = None          # Names of headers if non existant
     index_col: bool | int | None = None     # The column ID of the index
+    file_identifier: Callable[[List[str]], bool]  # Function to ID the file

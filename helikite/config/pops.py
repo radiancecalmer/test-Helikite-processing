@@ -17,6 +17,9 @@ POPS_flow -> flow should be just below 3, and check for variability increase
 from .base import InstrumentConfig
 from typing import Dict, Any, List
 
+def file_identifier(first_lines_of_csv):
+    if first_lines_of_csv[0] == "DateTime, Status, PartCt, PartCon, BL, BLTH, STD, P, TofP, POPS_Flow, PumpFB, LDTemp, LaserFB, LD_Mon, Temp, BatV, Laser_Current, Flow_Set,PumpLife_hrs, BL_Start, TH_Mult, nbins, logmin, logmax, Skip_Save, MinPeakPts,MaxPeakPts, RawPts,b0,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,b12,b13,b14,b15\n":
+        return True
 
 POPS = InstrumentConfig(
     dtype={
@@ -64,5 +67,6 @@ POPS = InstrumentConfig(
         "b13": "Int64",
         "b14": "Int64",
         "b15": "Int64",
-        }
-)
+        },
+    file_identifier=file_identifier)
+

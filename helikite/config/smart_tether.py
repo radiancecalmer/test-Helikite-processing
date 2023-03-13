@@ -15,6 +15,11 @@ Time, Comment, P (mbar), T (deg C), RH (%), Wind (degrees), Wind (m/s), UTC Time
 from .base import InstrumentConfig
 from typing import Dict, Any, List
 
+def file_identifier(first_lines_of_csv):
+    if (first_lines_of_csv[0] == "SmartTether log file\n"
+        and first_lines_of_csv[3] == "Time,Comment,Module ID,Alt (m),P (mbar),T (deg C),%RH,Wind (degrees),Wind (m/s),Supply (V),UTC Time,Latitude (deg),Longitude (deg),Course (deg),Speed (m/s)\n"):
+        return True
+
 SmartTether = InstrumentConfig(
     dtype={
         "Time": "str",
@@ -33,5 +38,5 @@ SmartTether = InstrumentConfig(
         "Course (deg)": "Float64",
         "Speed (m/s)": "Float64",
     },
-    header=2
-)
+    header=2,
+    file_identifier=file_identifier)

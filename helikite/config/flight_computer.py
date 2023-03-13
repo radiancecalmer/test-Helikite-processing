@@ -13,6 +13,11 @@ Houskeeping variables: TEMPbox, vBat
 from .base import InstrumentConfig
 from typing import Dict, Any, List
 
+
+def file_identifier(first_lines_of_csv):
+    if first_lines_of_csv[0] == "SBI,DateTime,PartCon,CO2,P_baro,TEMPbox,mFlow,TEMPsamp,RHsamp,TEMP1,RH1,TEMP2,RH2,vBat\n":
+        return True
+
 FlightComputer = InstrumentConfig(
     dtype={
         'SBI': "str",
@@ -31,4 +36,5 @@ FlightComputer = InstrumentConfig(
         'vBat': "Float64",
     },
     na_values=["NA"],
-    comment="#")
+    comment="#",
+    file_identifier=file_identifier)

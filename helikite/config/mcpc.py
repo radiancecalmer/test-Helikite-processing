@@ -11,6 +11,10 @@ Variables to keep: aveconc, concent, rawconc, condtmp, satttmp, pressur, fillcnt
 from .base import InstrumentConfig
 from typing import Dict, Any, List
 
+def file_identifier(first_lines_of_csv):
+    if "#MCPC-UAV" in first_lines_of_csv[0]:
+        return True
+
 MCPC = InstrumentConfig(
     header=13,
     delimiter="\t",
@@ -39,5 +43,6 @@ MCPC = InstrumentConfig(
         'err_num': "Int64",
         'mcpcpmp': "Int64",
         'mcpcpwr': "Int64",
-        }
-)
+        },
+    file_identifier=file_identifier)
+

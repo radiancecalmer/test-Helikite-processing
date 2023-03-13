@@ -12,6 +12,9 @@ For quality check -> plot the following variables: win1Fit7 and win1Fit8 (if win
 from .base import InstrumentConfig
 from typing import Dict, Any, List
 
+def file_identifier(first_lines_of_csv):
+    if first_lines_of_csv[0] == "Time Stamp,Inlet Number,P (mbars),T0 (degC),T5 (degC),Tgas(degC),Laser PID Readout,Det PID Readout,win0Fit0,win0Fit1,win0Fit2,win0Fit3,win0Fit4,win0Fit5,win0Fit6,win0Fit7,win0Fit8,win0Fit9,win1Fit0,win1Fit1,win1Fit2,win1Fit3,win1Fit4,win1Fit5,win1Fit6,win1Fit7,win1Fit8,win1Fit9,Det Bkgd,Ramp Ampl,N2O (ppm),H2O (ppm),CO (ppm),Battery Charge (V),Power Input (mV),Current (mA),SOC (%),Battery T (degC),FET T (degC)\n":
+        return True
 
 Pico = InstrumentConfig(
     dtype={
@@ -54,5 +57,6 @@ Pico = InstrumentConfig(
         "SOC (%)": "Int64",
         "Battery T (degC)": "Float64",
         "FET T (degC)": "Float64",
-        }
-)
+        },
+    file_identifier=file_identifier)
+

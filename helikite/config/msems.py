@@ -20,6 +20,15 @@ from .base import InstrumentConfig
 from typing import Dict, Any, List
 
 
+def file_identifier(first_lines_of_csv):
+	# To match a "...READINGS.txt" file
+    if (
+		"#mSEMS" in first_lines_of_csv[0]
+		and "#YY/MM/DD" in first_lines_of_csv[31]
+	):
+        return True
+
+# To match a "...READINGS.txt" file
 MSEMS = InstrumentConfig(
     header=31,
     delimiter="\t",
@@ -53,4 +62,5 @@ MSEMS = InstrumentConfig(
 		"mcpc_a_conc": "Float64",
 		"mcpc_a_cnt": "Int64",
     },
-)
+    file_identifier=file_identifier)
+
