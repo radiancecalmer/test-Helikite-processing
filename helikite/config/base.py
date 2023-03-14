@@ -1,5 +1,7 @@
 from typing import Dict, Any, List, Optional, Union, Callable
 from pydantic import BaseModel
+from pandas import DataFrame
+from plotly.graph_objects import Figure
 
 
 class InstrumentConfig(BaseModel):
@@ -18,3 +20,5 @@ class InstrumentConfig(BaseModel):
     names: List[str] | None = None          # Names of headers if non existant
     index_col: bool | int | None = None     # The column ID of the index
     file_identifier: Callable[[List[str]], bool]  # Function to ID the file
+    create_plots: Callable[[DataFrame], Figure] | None  # Function to generate plots
+    dataframe_corrections: Callable[[DataFrame], DataFrame] | None  # Function to perform corrections on the data (adjust time etc)

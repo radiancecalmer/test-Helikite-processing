@@ -38,7 +38,7 @@ def preprocess():
             continue
 
         full_path = os.path.join(config.constants.INPUTS_FOLDER, filename)
-        print(f"Determining instrument for {full_path}")
+        print(f"Determining instrument for {filename:40} ... ", end='')
 
         # Hold a list of name matches as to not match more than once for safeguard
         successful_matches = []
@@ -70,6 +70,9 @@ def preprocess():
                     instrument_match_count += 1
                     yaml_config['instruments'][name]['file'] = full_path
 
+            if instrument_match_count == 0:
+                print("!! Not found !!")
+
 
     # Write out the updated yaml configuration
     print_preprocess_stats(yaml_config)
@@ -78,15 +81,13 @@ def preprocess():
                                     config.constants.CONFIG_FILE))
 
 def print_preprocess_stats(yaml_config):
-    print(yaml_config)
     found = []
     not_found = []
     for instrument, props in yaml_config['instruments'].items():
-        print(instrument, props)
         if props['file'] is None:
-            found.append(instrument)
-        else:
             not_found.append(instrument)
+        else:
+            found.append(instrument)
 
     print()
     print("File preprocessing statistics:")

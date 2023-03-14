@@ -12,11 +12,46 @@ Houskeeping variables: TEMPbox, vBat
 
 from .base import InstrumentConfig
 from typing import Dict, Any, List
+import plotly.graph_objects as go
+from plotly.graph_objects import Figure
+import pandas as pd
 
 
 def file_identifier(first_lines_of_csv):
     if first_lines_of_csv[0] == "SBI,DateTime,PartCon,CO2,P_baro,TEMPbox,mFlow,TEMPsamp,RHsamp,TEMP1,RH1,TEMP2,RH2,vBat\n":
         return True
+
+def apply_dataframe_corrections(
+    df: pd.DataFrame
+) -> pd.DataFrame:
+
+    df['DateTime'] = pd.to_datetime(df['DateTime'], unit='s')
+
+    return df
+
+
+def create_plots(
+    df: pd.DataFrame
+) -> Figure:
+    fig = go.Figure()
+
+    # Add TEMPBox
+    fig.add_trace(
+        go.Scatter(
+            x=df.DateTime,
+            y=df.TEMPbox,
+            name="TEMPBox"))
+
+    # Add TEMPBox
+    fig.add_trace(
+        go.Scatter(
+            x=df.DateTime,
+            y=df.vBat,
+            name="vBat"))
+
+    fig.update_layout(title="Flight Computer")
+
+    return fig
 
 FlightComputer = InstrumentConfig(
     dtype={
@@ -37,4 +72,6 @@ FlightComputer = InstrumentConfig(
     },
     na_values=["NA"],
     comment="#",
-    file_identifier=file_identifier)
+    file_identifier=file_identifier,
+    create_plots=create_plots,
+    dataframe_corrections=apply_dataframe_corrections)
