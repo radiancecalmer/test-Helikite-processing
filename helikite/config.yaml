@@ -9,27 +9,27 @@ instruments:
     flight_computer:
         config: FlightComputer
         file: null
-    # mcpc:
-    #     config: MCPC
-    #     file: null
+    mcpc:
+        config: MCPC
+        file: null
     msems:
         config: MSEMS
         file: null
-    # ozone:
-    #     config: OzoneMonitor
-    #     file: null
-    # pico:
-    #     config: Pico
-    #     file: null
-    # pops:
-    #     config: POPS
-    #     file: null
-    # smart_tether:
-    #     config: SmartTether
-    #     file: null
-    # stap:
-    #     config: STAP
-    #     file: null
+    ozone:
+        config: OzoneMonitor
+        file: null
+    pico:
+        config: Pico
+        file: null
+    pops:
+        config: POPS
+        file: null
+    smart_tether:
+        config: SmartTether
+        file: null
+    stap:
+        config: STAP
+        file: null
 settings:
     input_folder: input
     output_folder: output
