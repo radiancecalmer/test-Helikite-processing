@@ -10,6 +10,8 @@ Headers: "ozone","cell_temp","cell_pressure","flow_rate","date","time"
 
 from .base import InstrumentConfig
 from typing import Dict, Any, List
+
+
 def file_identifier(first_lines_of_csv):
     # This one is tricky. There is no header! May run into conflicts later
     # Check there are six commas in the first line, and ends in 0, and only a

@@ -74,4 +74,4 @@ FlightComputer = InstrumentConfig(
     comment="#",
     file_identifier=file_identifier,
     create_plots=create_plots,
-    dataframe_corrections=apply_dataframe_corrections)
+    data_corrections=apply_dataframe_corrections)

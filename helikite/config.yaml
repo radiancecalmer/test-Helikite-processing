@@ -12,8 +12,11 @@ instruments:
     mcpc:
         config: MCPC
         file: null
-    msems:
-        config: MSEMS
+    msems-readings:
+        config: MSEMSReadings
+        file: null
+    msems-inverted:
+        config: MSEMSInverted
         file: null
     ozone:
         config: OzoneMonitor

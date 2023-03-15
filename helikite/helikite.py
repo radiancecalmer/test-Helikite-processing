@@ -18,51 +18,61 @@ def main():
     # List to add plots to that will end up being exported
     figures = []
 
+    # Create a folder with the current UTC time in outputs
+    output_path_with_time = os.path.join(
+        config.constants.OUTPUTS_FOLDER,
+        datetime.datetime.utcnow().isoformat())
+    os.makedirs(output_path_with_time)
+
+    # Go through each instrument and perform the
     for instrument, props in yaml_config['instruments'].items():
-        if instrument == 'flight_computer':  # POC: Flight computer to export
-            print(f"Processing {instrument}")
-            instrument_obj = getattr(config, fc_yaml['config'])
-            instrument_file = fc_yaml['file']
+        instrument_obj = getattr(config, props['config'])
+        instrument_file = props['file']
 
-            # Read data into dataframe
-            df = pd.read_csv(
-                instrument_file,
-                dtype=instrument_obj.dtype,
-                na_values=instrument_obj.na_values,
-                header=instrument_obj.header,
-                delimiter=instrument_obj.delimiter,
-                lineterminator=instrument_obj.lineterminator,
-                comment=instrument_obj.comment,
-                names=instrument_obj.names,
-                index_col=instrument_obj.index_col,
-            )
+        if instrument_file is None:
+            print(f"Skipping {instrument}: No file assigned!")
+            continue
+        else:
+            print(f"Processing {instrument}: {instrument_file}")
 
-            # Apply any corrections on the data
-            df = instrument_obj.dataframe_corrections(df)
+        # Read data into dataframe
+        df = pd.read_csv(
+            instrument_file,
+            dtype=instrument_obj.dtype,
+            na_values=instrument_obj.na_values,
+            header=instrument_obj.header,
+            delimiter=instrument_obj.delimiter,
+            lineterminator=instrument_obj.lineterminator,
+            comment=instrument_obj.comment,
+            names=instrument_obj.names,
+            index_col=instrument_obj.index_col,
+        )
 
-            # Generate the plots and add them to the list
-            figures.append(instrument_obj.create_plots(df))
+        # Apply any corrections on the data
+        df = instrument_obj.data_corrections(df)
 
-            # Create a folder with the current UTC time in outputs
-            output_path_with_time = os.path.join(
-                config.constants.OUTPUTS_FOLDER,
-                datetime.datetime.utcnow().isoformat())
-            os.makedirs(output_path_with_time)
+        # Generate the plots and add them to the list
+        figures.append(instrument_obj.create_plots(df))
 
-            # Write out all of the figures to HTML
-            with open(os.path.join(
-                    output_path_with_time,
-                    config.constants.HTML_OUTPUT_FILENAME), 'w'
-            ) as f:
-                # Write figures. They'll be sorted by the order they were added
-                for fig in figures:
-                    f.write(fig.to_html(full_html=False, include_plotlyjs=True))
+        # Save dataframe to outputs folder
+        df.to_csv(f"{os.path.join(output_path_with_time, instrument)}.csv")
 
-            export_yaml_config(
-                yaml_config,
-                os.path.join(output_path_with_time,
-                             config.constants.CONFIG_FILE)
-            )
+
+    html_filename = os.path.join(output_path_with_time,
+                                 config.constants.HTML_OUTPUT_FILENAME)
+    print(f"Writing {len(figures)} figures to {html_filename}")
+    # Write out all of the figures to HTML
+    with open(html_filename, 'w') as f:
+        # Write figures. They'll be sorted by the order they were added
+        for fig in figures:
+            if fig is not None:  # Don't process any Nones in case of empty figs
+                f.write(fig.to_html(full_html=False, include_plotlyjs=True))
+
+    export_yaml_config(
+        yaml_config,
+        os.path.join(output_path_with_time,
+                        config.constants.CONFIG_FILE)
+    )
 
 
 
@@ -73,6 +83,3 @@ if __name__ == '__main__':
         preprocess()
     else:
         main()
-
-
-

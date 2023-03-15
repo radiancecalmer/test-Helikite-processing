@@ -4,6 +4,32 @@ from pandas import DataFrame
 from plotly.graph_objects import Figure
 
 
+def default_corrections(df):
+    ''' Default callback function for data corrections.
+
+    Return with no changes
+    '''
+
+    return df
+
+def default_plots(df: DataFrame):
+    ''' Default callback for generated figures from dataframes
+
+    Return nothing, as anything else will populate the list that is written out
+    to HTML.
+    '''
+
+    return
+
+def default_file_identifier(first_lines_of_csv: List[str]):
+    ''' Default file identifier callback
+
+    Must return false. True would provide false positives.
+    '''
+
+    return False
+
+
 class InstrumentConfig(BaseModel):
     ''' Define an instrument configuration with explicit default values
 
@@ -19,6 +45,11 @@ class InstrumentConfig(BaseModel):
     comment: str | None = None              # Ignore anything after set char
     names: List[str] | None = None          # Names of headers if non existant
     index_col: bool | int | None = None     # The column ID of the index
-    file_identifier: Callable[[List[str]], bool]  # Function to ID the file
-    create_plots: Callable[[DataFrame], Figure] | None  # Function to generate plots
-    dataframe_corrections: Callable[[DataFrame], DataFrame] | None  # Function to perform corrections on the data (adjust time etc)
+
+    # Callback functions to offer bespoke configurations for each instrument
+    # Defaults defined above
+    file_identifier: Callable[[List[str]], bool] = default_file_identifier
+    create_plots: Callable[[DataFrame], Figure] = default_plots
+    data_corrections: Callable[[DataFrame], DataFrame] = default_corrections
+
+
