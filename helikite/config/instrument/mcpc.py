@@ -8,14 +8,31 @@ Variables to keep: aveconc, concent, rawconc, condtmp, satttmp, pressur, fillcnt
 
 '''
 
-from .base import InstrumentConfig
+from .base import Instrument
 from typing import Dict, Any, List
+import pandas as pd
 
-def file_identifier(first_lines_of_csv):
-    if "#MCPC-UAV" in first_lines_of_csv[0]:
-        return True
 
-MCPC = InstrumentConfig(
+class MCPC(Instrument):
+    def file_identifier(
+        self,
+        first_lines_of_csv
+    ) -> bool:
+        if "#MCPC-UAV" in first_lines_of_csv[0]:
+            return True
+
+    def data_corrections(
+        self,
+        df: pd.DataFrame
+    ) -> pd.DataFrame:
+
+        df['DateTime'] = pd.to_datetime(df['#YY/MM/DD'] + ' ' + df['HR:MN:SC'],
+                                        format='%y/%m/%d %H:%M:%S')
+        df.drop(columns=["#YY/MM/DD", "HR:MN:SC"], inplace=True)
+
+        return df
+
+mcpc = MCPC(
     header=13,
     delimiter="\t",
     dtype={
@@ -43,6 +60,5 @@ MCPC = InstrumentConfig(
         'err_num': "Int64",
         'mcpcpmp': "Int64",
         'mcpcpwr': "Int64",
-        },
-    file_identifier=file_identifier)
+        })
 

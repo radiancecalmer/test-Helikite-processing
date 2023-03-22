@@ -16,37 +16,167 @@ Houskeeping file: Look at READINGS (look at msems_err / cpc_err)
 
 '''
 
-from .base import InstrumentConfig
+from .base import Instrument
 from typing import Dict, Any, List
 import pandas as pd
 
 
-def file_identifier_inverted(first_lines_of_csv):
-    # To match "...INVERTED.txt" file
-    if "#Date\tTime\tTemp(C)\tPress(hPa)\tNumBins\tBin_Dia1\tBin_Dia2\tBin_Dia3" in first_lines_of_csv[0]:
-        return True
+class MSEMSInverted(Instrument):
+    def file_identifier(
+        self,
+        first_lines_of_csv
+    ) -> bool:
+        # To match "...INVERTED.txt" file
+        if "#Date\tTime\tTemp(C)\tPress(hPa)\tNumBins\tBin_Dia1\tBin_Dia2\tBin_Dia3" in first_lines_of_csv[0]:
+            return True
 
+    def data_corrections(
+        self,
+        df: pd.DataFrame
+    ) -> pd.DataFrame:
 
-def file_identifier_readings(first_lines_of_csv):
+        df['DateTime'] = pd.to_datetime(df['#Date'] + ' ' + df['Time'],
+                                        format='%y/%m/%d %H:%M:%S')
+        df.drop(columns=["#Date", "Time"], inplace=True)
+
+        return df
+
+class MSEMSReadings(Instrument):
     # To match a "...READINGS.txt" file
-    if ("#mSEMS" in first_lines_of_csv[0]
-        and "#YY/MM/DD" in first_lines_of_csv[31]
-    ):
-        return True
 
-def apply_dataframe_corrections_readings(
-    df: pd.DataFrame
-) -> pd.DataFrame:
+    def file_identifier(
+        self,
+        first_lines_of_csv
+    ) -> bool:
+        if ("#mSEMS" in first_lines_of_csv[0]
+            and "#YY/MM/DD" in first_lines_of_csv[31]
+        ):
+            return True
 
-    df['DateTime'] = pd.to_datetime(df['#YY/MM/DD'] + ' ' + df['HR:MN:SC'],
-                                    format='%y/%m/%d %H:%M:%S')
-    df.drop(columns=["#YY/MM/DD", "HR:MN:SC"], inplace=True)
+    def data_corrections(
+        self,
+        df: pd.DataFrame
+    ) -> pd.DataFrame:
 
-    return df
+        df['DateTime'] = pd.to_datetime(df['#YY/MM/DD'] + ' ' + df['HR:MN:SC'],
+                                        format='%y/%m/%d %H:%M:%S')
+        df.drop(columns=["#YY/MM/DD", "HR:MN:SC"], inplace=True)
 
+        return df
+
+class MSEMSScan(Instrument):
+    # To match a "...SCAN.txt" file
+
+    def file_identifier(
+        self,
+        first_lines_of_csv
+    ) -> bool:
+        if ("#mSEMS" in first_lines_of_csv[0]
+            and "#scan_conf" in first_lines_of_csv[31]
+        ):
+            return True
+
+    def data_corrections(
+        self,
+        df: pd.DataFrame
+    ) -> pd.DataFrame:
+
+        df['DateTime'] = pd.to_datetime(df['#YY/MM/DD'] + ' ' + df['HR:MN:SC'],
+                                        format='%y/%m/%d %H:%M:%S')
+        df.drop(columns=["#YY/MM/DD", "HR:MN:SC"], inplace=True)
+
+        return df
+
+msems_scan = MSEMSScan(
+    header=55,
+    delimiter="\t",
+    dtype={
+    "#YY/MM/DD": "str",
+    "HR:MN:SC": "str",
+    "scan_direction": "Int64",
+    "actual_max_dia": "Int64",
+    "scan_max_volts": "Float64",
+    "scan_min_volts": "Float64",
+    "sheath_flw_avg": "Float64",
+    "sheath_flw_stdev": "Float64",
+    "mcpc_smpf_avg": "Float64",
+    "mcpc_smpf_stdev": "Float64",
+    "press_avg": "Float64",
+    "press_stdev": "Float64",
+    "temp_avg": "Float64",
+    "temp_stdev": "Float64",
+    "sheath_rh_avg": "Float64",
+    "sheath_rh_stdev": "Float64",
+    "bin1": "Int64",
+    "bin2": "Int64",
+    "bin3": "Int64",
+    "bin4": "Int64",
+    "bin5": "Int64",
+    "bin6": "Int64",
+    "bin7": "Int64",
+    "bin8": "Int64",
+    "bin9": "Int64",
+    "bin10": "Int64",
+    "bin11": "Int64",
+    "bin12": "Int64",
+    "bin13": "Int64",
+    "bin14": "Int64",
+    "bin15": "Int64",
+    "bin16": "Int64",
+    "bin17": "Int64",
+    "bin18": "Int64",
+    "bin19": "Int64",
+    "bin20": "Int64",
+    "bin21": "Int64",
+    "bin22": "Int64",
+    "bin23": "Int64",
+    "bin24": "Int64",
+    "bin25": "Int64",
+    "bin26": "Int64",
+    "bin27": "Int64",
+    "bin28": "Int64",
+    "bin29": "Int64",
+    "bin30": "Int64",
+    "bin31": "Int64",
+    "bin32": "Int64",
+    "bin33": "Int64",
+    "bin34": "Int64",
+    "bin35": "Int64",
+    "bin36": "Int64",
+    "bin37": "Int64",
+    "bin38": "Int64",
+    "bin39": "Int64",
+    "bin40": "Int64",
+    "bin41": "Int64",
+    "bin42": "Int64",
+    "bin43": "Int64",
+    "bin44": "Int64",
+    "bin45": "Int64",
+    "bin46": "Int64",
+    "bin47": "Int64",
+    "bin48": "Int64",
+    "bin49": "Int64",
+    "bin50": "Int64",
+    "bin51": "Int64",
+    "bin52": "Int64",
+    "bin53": "Int64",
+    "bin54": "Int64",
+    "bin55": "Int64",
+    "bin56": "Int64",
+    "bin57": "Int64",
+    "bin58": "Int64",
+    "bin59": "Int64",
+    "bin60": "Int64",
+    "msems_errs": "Int64",
+    "mcpc_smpf": "Float64",
+    "mcpc_satf": "Float64",
+    "mcpc_cndt": "Float64",
+    "mcpc_satt": "Float64",
+    "mcpc_errs": "Int64",
+})
 
 # To match a "...READINGS.txt" file
-MSEMSReadings = InstrumentConfig(
+msems_readings = MSEMSReadings(
     header=31,
     delimiter="\t",
     dtype={
@@ -78,12 +208,10 @@ MSEMSReadings = InstrumentConfig(
         "mcpc_errs": "Int64",
         "mcpc_a_conc": "Float64",
         "mcpc_a_cnt": "Int64",
-    },
-    file_identifier=file_identifier_readings,
-    data_corrections=apply_dataframe_corrections_readings)
+    })
 
 # To match a "...READINGS.txt" file
-MSEMSInverted = InstrumentConfig(
+msems_inverted = MSEMSInverted(
     # header=31,
     delimiter="\t",
     dtype={
@@ -212,6 +340,4 @@ MSEMSInverted = InstrumentConfig(
         "Bin_Conc58": "Float64",
         "Bin_Conc59": "Float64",
         "Bin_Conc60": "Float64",
-    },
-    file_identifier=file_identifier_inverted,)
-    # data_corrections=apply_dataframe_corrections)
+    })

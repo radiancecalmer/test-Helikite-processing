@@ -1,9 +1,4 @@
-from .stap import STAP
-from .mcpc import MCPC
-from .flight_computer import FlightComputer
-from .pico import Pico
-from .pops import POPS
-from .smart_tether import SmartTether
-from .ozone import OzoneMonitor
-from .msems import MSEMSReadings, MSEMSInverted
 from .constants import constants
+from .instrument import (
+    flight_computer, mcpc, msems, ozone, pico, pops, smart_tether, stap
+)
