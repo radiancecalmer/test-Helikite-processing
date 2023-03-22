@@ -5,10 +5,9 @@ import glob
 import config
 import importlib
 import os
-from config.flight_computer import FlightComputer
 
 
-def get_columns_from_dtype(instrument: config.base.InstrumentConfig):
+def get_columns_from_dtype(instrument: config.instrument.base.Instrument):
     ''' Gets the column names from the instrument config '''
 
     return list(instrument.dtype)
@@ -29,7 +28,7 @@ def preprocess():
     # Hold a list of the loaded instrument objects
     instruments = {}
     for instrument, props in yaml_config['instruments'].items():
-        instruments[instrument] = getattr(config, props['config'])
+        instruments[instrument] = getattr(config.instrument, props['config'])
 
 
     for filename in os.listdir(config.constants.INPUTS_FOLDER):
@@ -68,11 +67,16 @@ def preprocess():
                         )
                     successful_matches.append(name)
                     instrument_match_count += 1
-                    yaml_config['instruments'][name]['file'] = full_path
+                    props = yaml_config['instruments'][name]
+
+                    # Set filename in config
+                    props['file'] = full_path
+
+                    # Get the date if it is in the header
+                    props['date'] = obj.date_extractor(header_lines)
 
             if instrument_match_count == 0:
                 print("!! Not found !!")
-
 
     # Write out the updated yaml configuration
     print_preprocess_stats(yaml_config)
@@ -100,3 +104,23 @@ def export_yaml_config(yaml_config, out_location=config.constants.CONFIG_FILE):
     # Update YAML (will remove all commented out inputs)
     with open(out_location, 'w') as in_yaml:
         yaml.dump(yaml_config, in_yaml)
+
+
+def generate_config():
+    # Go through each instrument in the __init__ of config.instrument
+    instruments = config.instrument.__dict__.items()
+    yaml_config = {}
+    yaml_config['instruments'] = {}
+
+    for instrument, obj in instruments:
+        # If the imported object is actually an Instrument, then proceed
+        if isinstance(obj, config.instrument.base.Instrument):
+            print(instrument)
+            yaml_config['instruments'][instrument] = {
+                'config': instrument,
+                'file': None,
+                'date': None,
+            }
+    export_yaml_config(yaml_config,
+                       os.path.join(config.constants.INPUTS_FOLDER,
+                                    config.constants.CONFIG_FILE))

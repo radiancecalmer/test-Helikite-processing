@@ -1,5 +1,7 @@
 import sys
-from preprocess import preprocess, read_yaml_config, export_yaml_config
+from preprocess import (
+    preprocess, read_yaml_config, export_yaml_config, generate_config
+)
 import config
 import pandas as pd
 import plotly.graph_objects as go
@@ -24,20 +26,24 @@ def main():
         datetime.datetime.utcnow().isoformat())
     os.makedirs(output_path_with_time)
 
+
     # Go through each instrument and perform the
     for instrument, props in yaml_config['instruments'].items():
-        instrument_obj = getattr(config, props['config'])
-        instrument_file = props['file']
 
-        if instrument_file is None:
+        instrument_obj = getattr(config.instrument, props['config'])
+
+        instrument_obj.filename = props['file']
+        instrument_obj.date = props['date']
+
+        if instrument_obj.filename is None:
             print(f"Skipping {instrument}: No file assigned!")
             continue
         else:
-            print(f"Processing {instrument}: {instrument_file}")
+            print(f"Processing {instrument}: {instrument_obj.filename}")
 
         # Read data into dataframe
         df = pd.read_csv(
-            instrument_file,
+            instrument_obj.filename,
             dtype=instrument_obj.dtype,
             na_values=instrument_obj.na_values,
             header=instrument_obj.header,
@@ -75,11 +81,17 @@ def main():
     )
 
 
-
 if __name__ == '__main__':
-    # If docker arg 'preprocess' given, then run the preprocess function
-    if len(sys.argv) > 1 and sys.argv[1] == 'preprocess':
-        print("TRUE!", sys.argv[0], sys.argv)
-        preprocess()
+    # If docker arg given, don't run main
+    if len(sys.argv) > 1:
+        if sys.argv[1] == 'preprocess':
+            print("TRUE!", sys.argv[0], sys.argv)
+            preprocess()
+        elif sys.argv[1] == 'generate_config':
+            print("Generating YAML configuration in input folder")
+            generate_config()
+        else:
+            print("Unknown argument. Options are: preprocess, generate_config")
     else:
+        # If no args, runt he main application
         main()
