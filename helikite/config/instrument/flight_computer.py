@@ -15,6 +15,11 @@ from typing import Dict, Any, List
 import plotly.graph_objects as go
 from plotly.graph_objects import Figure
 import pandas as pd
+from io import StringIO
+import csv
+
+
+CSV_HEADER = "SBI,DateTime,PartCon,CO2,P_baro,TEMPbox,mFlow,TEMPsamp,RHsamp,TEMP1,RH1,TEMP2,RH2,vBat\n"
 
 
 class FlightComputer(Instrument):
@@ -22,7 +27,7 @@ class FlightComputer(Instrument):
         self,
         first_lines_of_csv
     ) -> bool:
-        if first_lines_of_csv[0] == "SBI,DateTime,PartCon,CO2,P_baro,TEMPbox,mFlow,TEMPsamp,RHsamp,TEMP1,RH1,TEMP2,RH2,vBat\n":
+        if first_lines_of_csv[0] == CSV_HEADER:
             return True
 
     def data_corrections(
@@ -58,6 +63,43 @@ class FlightComputer(Instrument):
         fig.update_layout(title="Flight Computer")
 
         return fig
+
+    def read_data(
+        self
+    ) -> pd.DataFrame:
+        ''' Read data into dataframe '''
+
+        # Parse the file first removing the duplicate header cols
+        cleaned_csv = StringIO()
+        header_counter = 0
+
+        with open(self.filename, 'r') as csv_data:
+            for row in csv_data:
+                if row == CSV_HEADER:
+                    if header_counter == 0:
+                        # Only append the first header, ignore all others
+                        cleaned_csv.write(row)
+                    header_counter += 1
+                else:
+                    cleaned_csv.write(row)
+
+        # Seek back to start of memory object
+        cleaned_csv.seek(0)
+
+        df = pd.read_csv(
+            cleaned_csv,  # Load the StringIO object created above
+            dtype=self.dtype,
+            na_values=self.na_values,
+            header=self.header,
+            delimiter=self.delimiter,
+            lineterminator=self.lineterminator,
+            comment=self.comment,
+            names=self.names,
+            index_col=self.index_col,
+        )
+
+        return df
+
 
 flight_computer = FlightComputer(
     dtype={

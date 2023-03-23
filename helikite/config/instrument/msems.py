@@ -19,6 +19,8 @@ Houskeeping file: Look at READINGS (look at msems_err / cpc_err)
 from .base import Instrument
 from typing import Dict, Any, List
 import pandas as pd
+import plotly.graph_objects as go
+from plotly.graph_objects import Figure
 
 
 class MSEMSInverted(Instrument):
@@ -63,6 +65,24 @@ class MSEMSReadings(Instrument):
         df.drop(columns=["#YY/MM/DD", "HR:MN:SC"], inplace=True)
 
         return df
+
+    def create_plots(
+        self,
+        df: pd.DataFrame
+    ) -> Figure:
+        fig = go.Figure()
+
+        for var in ["msems_errs", "mcpc_errs"]:
+            fig.add_trace(
+            go.Scatter(
+                x=df.DateTime,
+                y=df[var],
+                name=var))
+
+        fig.update_layout(title="MSEMS")
+
+        return fig
+
 
 class MSEMSScan(Instrument):
     # To match a "...SCAN.txt" file

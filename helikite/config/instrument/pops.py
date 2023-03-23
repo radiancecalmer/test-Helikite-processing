@@ -17,6 +17,8 @@ POPS_flow -> flow should be just below 3, and check for variability increase
 from .base import Instrument
 from typing import Dict, Any, List
 import pandas as pd
+import plotly.graph_objects as go
+from plotly.graph_objects import Figure
 
 
 class POPS(Instrument):
@@ -35,8 +37,26 @@ class POPS(Instrument):
         df['DateTime'] = pd.to_datetime(df['DateTime'], unit='s')
         # df.drop(columns=["date", "time"], inplace=True)
 
+        df.columns = df.columns.str.strip()
+
         return df
 
+    def create_plots(
+        self,
+        df: pd.DataFrame
+    ) -> Figure:
+        fig = go.Figure()
+
+        for var in ["POPS_Flow"]:
+            fig.add_trace(
+            go.Scatter(
+                x=df.DateTime,
+                y=df[var],
+                name=var))
+
+        fig.update_layout(title="POPS")
+
+        return fig
 
 pops = POPS(
     dtype={

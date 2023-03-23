@@ -12,6 +12,8 @@ For quality check -> plot the following variables: win1Fit7 and win1Fit8 (if win
 from .base import Instrument
 from typing import Dict, Any, List
 import pandas as pd
+import plotly.graph_objects as go
+from plotly.graph_objects import Figure
 
 
 class Pico(Instrument):
@@ -35,6 +37,22 @@ class Pico(Instrument):
 
         return df
 
+    def create_plots(
+        self,
+        df: pd.DataFrame
+    ) -> Figure:
+        fig = go.Figure()
+
+        for var in ["win1Fit7", "win1Fit8"]:
+            fig.add_trace(
+            go.Scatter(
+                x=df.DateTime,
+                y=df[var],
+                name=var))
+
+        fig.update_layout(title="Pico")
+
+        return fig
 
 pico = Pico(
     dtype={

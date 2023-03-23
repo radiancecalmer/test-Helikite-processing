@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from pandas import DataFrame
 from plotly.graph_objects import Figure
 from datetime import datetime
+import pandas as pd
 
 
 class Instrument:
@@ -68,3 +69,28 @@ class Instrument:
         '''
 
         return None
+
+    def read_data(
+        self
+    ) -> pd.DataFrame:
+        ''' Read data into dataframe
+
+        This allows a custom read function to parse the CSV/TXT into a
+        dataframe, for example cleaning dirty data at the end of the file
+        in memory without altering the input file (see flight computer conf).
+
+        '''
+
+        df = pd.read_csv(
+            self.filename,
+            dtype=self.dtype,
+            na_values=self.na_values,
+            header=self.header,
+            delimiter=self.delimiter,
+            lineterminator=self.lineterminator,
+            comment=self.comment,
+            names=self.names,
+            index_col=self.index_col,
+        )
+
+        return df
