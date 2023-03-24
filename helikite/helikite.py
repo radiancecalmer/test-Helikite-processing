@@ -7,7 +7,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import os
 import datetime
-from plots import plot_scatter_from_variable_list_by_index
+import plots
+# from plots import plot_scatter_from_variable_list_by_index
 
 
 def main():
@@ -81,7 +82,7 @@ def main():
 
     # Housekeeping vars
     figures.append(
-        plot_scatter_from_variable_list_by_index(
+        plots.plot_scatter_from_variable_list_by_index(
             fc, "Housekeeping variables",
             [
                 "TEMPbox",
@@ -97,7 +98,7 @@ def main():
 
     # Pressure vars
     figures.append(
-        plot_scatter_from_variable_list_by_index(
+        plots.plot_scatter_from_variable_list_by_index(
             fc, "Pressure variables",
             [
                 "P_baro",
@@ -110,14 +111,7 @@ def main():
 
     html_filename = os.path.join(output_path_with_time,
                                  config.constants.HTML_OUTPUT_FILENAME)
-    print(f"Writing {len(figures)} figures to {html_filename}")
-    # Write out all of the figures to HTML
-    with open(html_filename, 'w') as f:
-        # Write figures. They'll be sorted by the order they were added
-        for fig in figures:
-            if fig is not None:  # Don't process any Nones in case of empty figs
-                f.write(fig.to_html(full_html=False, include_plotlyjs=True))
-
+    plots.write_plots_to_html(figures, html_filename)
 
 if __name__ == '__main__':
     # If docker arg given, don't run main
