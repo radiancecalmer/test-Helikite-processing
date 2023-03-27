@@ -65,7 +65,8 @@ def main():
         # Generate the plots and add them to the list
         figures.append(instrument_obj.create_plots(df))
         
-        df_housekeeping = instrument_obj.get_housekeeping_data(df)
+        df_housekeeping = instrument_obj.get_housekeeping_data(
+            df, pressure_housekeeping_var="housekeeping_pressure")
         df_export = instrument_obj.get_export_data(df)
         
         # Save dataframe to outputs folder
@@ -74,6 +75,7 @@ def main():
         
         # Add dataframes to list, with the export list is as a tuple 
         # to sequence instruments in specific order
+        df_housekeeping.columns = f"{instrument}_" + df_housekeeping.columns.values
         all_housekeeping_dfs.append(df_housekeeping)
         all_export_dfs.append((df_export, instrument_obj.export_order)) 
         
@@ -115,8 +117,9 @@ def main():
     
     master_housekeeping_df = all_housekeeping_dfs[0]
     for df in all_housekeeping_dfs[1:]:
-        master_housekeeping_df = master_housekeeping_df.merge(
-            df, how="outer", left_index=True, right_index=True)
+        if len(df) > 0:
+            master_housekeeping_df = master_housekeeping_df.merge(
+                df, how="outer", left_index=True, right_index=True)
 
     # Sort by the date index
     master_housekeeping_df.sort_index(inplace=True)
@@ -124,27 +127,26 @@ def main():
         os.path.join(output_path_with_time, 
                      config.constants.HOUSEKEEPING_CSV_FILENAME))
     
-    
-    # # Housekeeping vars
-    # figures.append(
-    #     plots.plot_scatter_from_variable_list_by_index(
-    #         master_housekeeping_df, "Housekeeping variables",
-    #         [
-    #             "flight_computer_TEMPbox",
-    #             "flight_computer_vBat",
-    #             "msems_readings_msems_errs",
-    #             "msems_scan_msems_errs",
-    #             "msems_readings_mcpc_errs",
-    #             "msems_scan_mcpc_errs",
-    #             "pops_POPS_Flow",
-    #         ],
-    #     )
-    # )
+    # Housekeeping vars
+    figures.append(
+        plots.plot_scatter_from_variable_list_by_index(
+            master_housekeeping_df, "Housekeeping variables",
+            [
+                "flight_computer_TEMPbox",
+                "flight_computer_vBat",
+                "msems_readings_msems_errs",
+                "msems_scan_msems_errs",
+                "msems_readings_mcpc_errs",
+                "msems_scan_mcpc_errs",
+                "pops_POPS_Flow",
+            ],
+        )
+    )
 
     # Housekeeping pressure vars
     figures.append(
         plots.plot_scatter_from_variable_list_by_index(
-            master_export_df, "Housekeeping pressure variables",
+            master_housekeeping_df, "Housekeeping pressure variables",
             [
                 "flight_computer_housekeeping_pressure",
                 "msems_readings_housekeeping_pressure",

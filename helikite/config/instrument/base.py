@@ -80,18 +80,20 @@ class Instrument:
 
         return None
     
-    def get_housekeeping_data(self, df) -> pd.DataFrame:
+    def get_housekeeping_data(
+            self,
+            df, 
+            pressure_housekeeping_var='housekeeping_pressure'
+        ) -> pd.DataFrame:
         ''' Returns the dataframe of housekeeping variables 
         
-        If there are no housekeeping variables, return an empty DataFrame
+        If there are no housekeeping variables, return the original dataframe
         '''
         
         if self.cols_housekeeping:
-            return df[self.cols_housekeeping]
-        else:
-            
-            print("There are no housekeeping variables set for this instrument")
-            return pd.DataFrame()
+            return df.copy()[self.cols_housekeeping]
+        
+        return df.copy()
         
         
     def get_export_data(self, df) -> pd.DataFrame:
@@ -101,15 +103,12 @@ class Instrument:
         behaviour is to return the dataframe with all of the columns
         '''
         
-        if self.pressure_variable is not None and self.cols_housekeeping:
-            self.cols_export.append('housekeeping_pressure')
-        
-        if self.cols_housekeeping:
-            return df[self.cols_export]
+        if self.cols_export:
+            return df.copy()[self.cols_export]
         else:
             print("There are no export variables set for this instrument, "
                   "returning all")
-            return df
+            return df.copy()
             
     def correct_from_time_offset(
         self, 
@@ -149,8 +148,7 @@ class Instrument:
                 # If no offset, but a pressure var exists add column of same val
                 df[column_name] = df[self.pressure_variable] 
             else:
-                df[column_name] = (df[self.pressure_variable] 
-                                   + self.pressure_offset_housekeeping)
+                df[column_name] = df[self.pressure_variable] + self.pressure_offset_housekeeping
         
         return df
         
