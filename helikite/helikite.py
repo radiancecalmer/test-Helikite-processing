@@ -153,11 +153,11 @@ if __name__ == '__main__':
     # If docker arg given, don't run main
     if len(sys.argv) > 1:
         if sys.argv[1] == 'preprocess':
-            print("TRUE!", sys.argv[0], sys.argv)
+            generate_config(overwrite=False)  # Write conf file if doesn't exist
             preprocess()
         elif sys.argv[1] == 'generate_config':
             print("Generating YAML configuration in input folder")
-            generate_config()
+            generate_config(overwrite=True)
         else:
             print("Unknown argument. Options are: preprocess, generate_config")
     else:

@@ -106,7 +106,25 @@ def export_yaml_config(yaml_config, out_location=config.constants.CONFIG_FILE):
         yaml.dump(yaml_config, in_yaml)
 
 
-def generate_config():
+def generate_config(
+    overwrite=False,
+    path=os.path.join(
+        config.constants.INPUTS_FOLDER,
+        config.constants.CONFIG_FILE)
+) -> None:
+    ''' Write out the configuration file
+
+    If overwrite is True, the configuration file in the path argument is
+    overwritten
+
+    '''
+
+    if overwrite is False and os.path.exists(path):
+        # Escape if overwrite if false and the file exists
+        return
+
+    print("Creating config YAML file...\n")
+
     # Go through each instrument in the __init__ of config.instrument
     instruments = config.instrument.__dict__.items()
     yaml_config = {}
@@ -115,12 +133,14 @@ def generate_config():
     for instrument, obj in instruments:
         # If the imported object is actually an Instrument, then proceed
         if isinstance(obj, config.instrument.base.Instrument):
-            print(instrument)
             yaml_config['instruments'][instrument] = {
                 'config': instrument,
                 'file': None,
                 'date': None,
+                'time_offset': {
+                    'hour': 0,
+                    'minute': 0,
+                    'second': 0,
+                }
             }
-    export_yaml_config(yaml_config,
-                       os.path.join(config.constants.INPUTS_FOLDER,
-                                    config.constants.CONFIG_FILE))
+    export_yaml_config(yaml_config, path)
