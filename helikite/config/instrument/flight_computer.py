@@ -122,4 +122,5 @@ flight_computer = FlightComputer(
     cols_housekeeping=["TEMPbox", "vBat"],
     cols_export=["P_baro", "CO2", "TEMP1", "TEMP2", 
                  "TEMPsamp", "RH1", "RH2", "RHsamp", "mFlow"],
-    export_order=100)
+    export_order=100,
+    pressure_variable='P_baro')

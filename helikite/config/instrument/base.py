@@ -20,6 +20,7 @@ class Instrument:
         cols_export: List[str] = [],          # Columns to export 
         cols_housekeeping: List[str] = [],    # Columns to use for housekeeping
         export_order: int | None = None,      # Order hierarchy in export file
+        pressure_variable: str | None = None  # The variable measuring pressure
     ) -> None:
 
         self.dtype = dtype
@@ -33,10 +34,12 @@ class Instrument:
         self.cols_export = cols_export
         self.cols_housekeeping = cols_housekeeping
         self.export_order = export_order
+        self.pressure_variable = pressure_variable
         
         # Properties that are not part of standard config, can be added
         self.filename: str | None = None
         self.date: datetime | None = None
+        self.pressure_offset_housekeeping: float | None = None
         self.time_offset: Dict[str, int] = {}
 
 
@@ -98,12 +101,59 @@ class Instrument:
         behaviour is to return the dataframe with all of the columns
         '''
         
+        if self.pressure_variable is not None and self.cols_housekeeping:
+            self.cols_export.append('housekeeping_pressure')
+        
         if self.cols_housekeeping:
             return df[self.cols_export]
         else:
-            print("There are no export variables set for this instrument, returning all")
+            print("There are no export variables set for this instrument, "
+                  "returning all")
             return df
             
+    def correct_from_time_offset(
+        self, 
+        df: pd.DataFrame
+    ) -> pd.DataFrame:
+        ''' Using values in the time_offset variable, correct DateTime index '''
+        
+        if (
+            self.time_offset['hour'] != 0 
+            or self.time_offset['minute'] != 0
+            or self.time_offset['second'] != 0
+        ):
+            print(f"Shifting the time offset by {self.time_offset}")
+            
+            df.index = df.index + pd.DateOffset(
+                hours=self.time_offset['hour'], 
+                minutes=self.time_offset['minute'], 
+                seconds=self.time_offset['second'])
+            
+        
+        return df
+    
+    def set_housekeeping_pressure_offset_variable(
+        self, 
+        df: pd.DataFrame,
+        column_name="housekeeping_pressure"
+    ) -> pd.DataFrame:
+        ''' Generate variable to offset pressure value for housekeeping
+        
+        Using an offset in the configuration, a new variable is created
+        that offset's the instruments pressure variable. This is used to align
+        the pressure value on the plot to help align pressure. 
+        '''
+        
+        if self.pressure_variable is not None:
+            if self.pressure_offset_housekeeping is None:
+                # If no offset, but a pressure var exists add column of same val
+                df[column_name] = df[self.pressure_variable] 
+            else:
+                df[column_name] = (df[self.pressure_variable] 
+                                   + self.pressure_offset_housekeeping)
+        
+        return df
+        
         
     def read_data(
         self

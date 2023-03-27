@@ -48,4 +48,5 @@ stap = STAP(
         "sigmar_smth": "Float64",
     },
     na_values=["NAN"],
-    export_order=500)
+    export_order=500,
+    pressure_variable='sample_press_mbar')

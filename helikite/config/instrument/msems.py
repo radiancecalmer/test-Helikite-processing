@@ -194,7 +194,8 @@ msems_scan = MSEMSScan(
     "mcpc_satt": "Float64",
     "mcpc_errs": "Int64",
 },
-export_order=710)
+export_order=710,
+pressure_variable='press_avg')
 
 # To match a "...READINGS.txt" file
 msems_readings = MSEMSReadings(
@@ -230,7 +231,8 @@ msems_readings = MSEMSReadings(
         "mcpc_a_conc": "Float64",
         "mcpc_a_cnt": "Int64",
     },
-    export_order=700)
+    export_order=700,
+    pressure_variable='pressure')
 
 # To match a "...READINGS.txt" file
 msems_inverted = MSEMSInverted(

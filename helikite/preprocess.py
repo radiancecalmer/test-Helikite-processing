@@ -141,6 +141,7 @@ def generate_config(
                     'hour': 0,
                     'minute': 0,
                     'second': 0,
-                }
+                },
+                'pressure_offset': None
             }
     export_yaml_config(yaml_config, path)

@@ -108,4 +108,5 @@ pops = POPS(
         "b14": "Int64",
         "b15": "Int64",
         },
-        export_order=400)
+        export_order=400,
+        pressure_variable='P')

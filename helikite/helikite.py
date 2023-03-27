@@ -38,7 +38,8 @@ def main():
         instrument_obj.filename = props['file']
         instrument_obj.date = props['date']
         instrument_obj.time_offset = props['time_offset']
-
+        instrument_obj.pressure_offset_housekeeping = props['pressure_offset']
+        
         if instrument_obj.filename is None:
             print(f"Skipping {instrument}: No file assigned!")
             continue
@@ -52,6 +53,14 @@ def main():
         
         # Set index to the DateTime column
         df.set_index('DateTime', inplace=True)
+        
+        # Modify the DateTime index based off the configuration offsets
+        df = instrument_obj.correct_from_time_offset(df)
+        
+        # Create housekeeping pressure variable to help align pressure visually
+        df = instrument_obj.set_housekeeping_pressure_offset_variable(
+            df, column_name="housekeeping_pressure"
+        )
         
         # Generate the plots and add them to the list
         figures.append(instrument_obj.create_plots(df))
@@ -67,6 +76,8 @@ def main():
         # to sequence instruments in specific order
         all_housekeeping_dfs.append(df_housekeeping)
         all_export_dfs.append((df_export, instrument_obj.export_order)) 
+        
+        print()
 
 
     export_yaml_config(
@@ -129,6 +140,21 @@ def main():
     #         ],
     #     )
     # )
+
+    # Housekeeping pressure vars
+    figures.append(
+        plots.plot_scatter_from_variable_list_by_index(
+            master_export_df, "Housekeeping pressure variables",
+            [
+                "flight_computer_housekeeping_pressure",
+                "msems_readings_housekeeping_pressure",
+                "msems_scan_housekeeping_pressure",
+                "stap_housekeeping_pressure",
+                "smart_tether_housekeeping_pressure",
+                "pops_housekeeping_pressure"
+            ],
+        )
+    )
 
     # Pressure vars
     figures.append(

@@ -68,4 +68,5 @@ smart_tether = SmartTether(
         "Speed (m/s)": "Float64",
     },
     header=2,
-    export_order=600)
+    export_order=600,
+    pressure_variable='P (mbar)')
