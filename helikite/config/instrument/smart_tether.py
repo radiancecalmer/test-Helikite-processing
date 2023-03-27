@@ -67,4 +67,5 @@ smart_tether = SmartTether(
         "Course (deg)": "Float64",
         "Speed (m/s)": "Float64",
     },
-    header=2)
+    header=2,
+    export_order=600)

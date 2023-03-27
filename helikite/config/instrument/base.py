@@ -17,6 +17,9 @@ class Instrument:
         comment: str | None = None,           # Ignore anything after set char
         names: List[str] | None = None,       # Names of headers if non existant
         index_col: bool | int | None = None,  # The column ID of the index
+        cols_export: List[str] = [],          # Columns to export 
+        cols_housekeeping: List[str] = [],    # Columns to use for housekeeping
+        export_order: int | None = None,      # Order hierarchy in export file
     ) -> None:
 
         self.dtype = dtype
@@ -27,10 +30,14 @@ class Instrument:
         self.comment = comment
         self.names = names
         self.index_col = index_col
-
+        self.cols_export = cols_export
+        self.cols_housekeeping = cols_housekeeping
+        self.export_order = export_order
+        
         # Properties that are not part of standard config, can be added
         self.filename: str | None = None
         self.date: datetime | None = None
+        self.time_offset: Dict[str, int] = {}
 
 
 
@@ -69,7 +76,35 @@ class Instrument:
         '''
 
         return None
-
+    
+    def get_housekeeping_data(self, df) -> pd.DataFrame:
+        ''' Returns the dataframe of housekeeping variables 
+        
+        If there are no housekeeping variables, return an empty DataFrame
+        '''
+        
+        if self.cols_housekeeping:
+            return df[self.cols_housekeeping]
+        else:
+            
+            print("There are no housekeeping variables set for this instrument")
+            return pd.DataFrame()
+        
+        
+    def get_export_data(self, df) -> pd.DataFrame:
+        ''' Returns the dataframe of only the columns to export 
+        
+        If there are no columns set in the Instrument class, the default
+        behaviour is to return the dataframe with all of the columns
+        '''
+        
+        if self.cols_housekeeping:
+            return df[self.cols_export]
+        else:
+            print("There are no export variables set for this instrument, returning all")
+            return df
+            
+        
     def read_data(
         self
     ) -> pd.DataFrame:
@@ -92,5 +127,6 @@ class Instrument:
             names=self.names,
             index_col=self.index_col,
         )
-
+        
+        
         return df

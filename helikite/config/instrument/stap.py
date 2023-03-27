@@ -47,5 +47,5 @@ stap = STAP(
         "sigmag_smth": "Float64",
         "sigmar_smth": "Float64",
     },
-    na_values=["NAN"])
-
+    na_values=["NAN"],
+    export_order=500)

@@ -7,7 +7,6 @@ DateTime in seconds since 1970-01-01 (to be verified)
 
 Variables to keep: DateTime, P_baro, CO2, TEMP1, TEMP2, TEMPsamp, RH1, RH2, RHsamp, mFlow
 Houskeeping variables: TEMPbox, vBat
-
 '''
 
 from .base import Instrument
@@ -49,14 +48,14 @@ class FlightComputer(Instrument):
         # Add TEMPBox
         fig.add_trace(
             go.Scatter(
-                x=df.DateTime,
+                x=df.index,
                 y=df.TEMPbox,
                 name="TEMPBox"))
 
         # Add TEMPBox
         fig.add_trace(
             go.Scatter(
-                x=df.DateTime,
+                x=df.index,
                 y=df.vBat,
                 name="vBat"))
 
@@ -119,4 +118,8 @@ flight_computer = FlightComputer(
         'vBat': "Float64",
     },
     na_values=["NA"],
-    comment="#")
+    comment="#",
+    cols_housekeeping=["TEMPbox", "vBat"],
+    cols_export=["P_baro", "CO2", "TEMP1", "TEMP2", 
+                 "TEMPsamp", "RH1", "RH2", "RHsamp", "mFlow"],
+    export_order=100)

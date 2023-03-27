@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 import os
 import datetime
 import plots
+from functools import reduce
 # from plots import plot_scatter_from_variable_list_by_index
 
 
@@ -26,7 +27,8 @@ def main():
     os.makedirs(output_path_with_time)
 
     # Append each df to this to eventually join on a key
-    all_dfs = []
+    all_export_dfs = []
+    all_housekeeping_dfs = []
 
     # Go through each instrument and perform the operations on each instrument
     for instrument, props in yaml_config['instruments'].items():
@@ -35,6 +37,7 @@ def main():
 
         instrument_obj.filename = props['file']
         instrument_obj.date = props['date']
+        instrument_obj.time_offset = props['time_offset']
 
         if instrument_obj.filename is None:
             print(f"Skipping {instrument}: No file assigned!")
@@ -46,25 +49,24 @@ def main():
 
         # Apply any corrections on the data
         df = instrument_obj.data_corrections(df)
-
+        
+        # Set index to the DateTime column
+        df.set_index('DateTime', inplace=True)
+        
         # Generate the plots and add them to the list
         figures.append(instrument_obj.create_plots(df))
-
+        
+        df_housekeeping = instrument_obj.get_housekeeping_data(df)
+        df_export = instrument_obj.get_export_data(df)
+        
         # Save dataframe to outputs folder
-        df.to_csv(f"{os.path.join(output_path_with_time, instrument)}.csv")
-        # all_dfs.append(df)
-
-        # Remove microseconds from timestamps so they fit better to other data
-        df.set_index('DateTime', inplace=True)
-        df.index = pd.to_datetime(df.index).round('s')
-        # df.index = df.index.floor('S').tz_localize(None)
-
-        if instrument == 'flight_computer':
-            print("flight comp!")
-            fc = df
-        else:
-            all_dfs.append((df, instrument))  # Append to join with instr. name
-        # print(df['DateTime'].dtype)
+        df_export.to_csv(f"{os.path.join(output_path_with_time, instrument)}.csv")
+        df_export.columns = f"{instrument}_" + df_export.columns.values
+        
+        # Add dataframes to list, with the export list is as a tuple 
+        # to sequence instruments in specific order
+        all_housekeeping_dfs.append(df_housekeeping)
+        all_export_dfs.append((df_export, instrument_obj.export_order)) 
 
 
     export_yaml_config(
@@ -72,39 +74,73 @@ def main():
         os.path.join(output_path_with_time,
                         config.constants.CONFIG_FILE)
     )
-    for df, instrument_name in all_dfs:
-        df.columns = f"{instrument_name}_" + df.columns.values
-        fc = fc.merge(df, on='DateTime', how='outer',)
+    
+    def sort_key(export_df):
+        # Uses value in the second position of the tuple to define sort 'height'
+        # ie. (df, 100) is sorted higher than (df, 50)
+        
+        if export_df[1] is None: 
+            # If no order set, push it to the end
+            print(f"There is no sort key for columns {export_df[0].columns}. ")
+            print("Placing them at the end.")
+            return 999999
+        
+        return export_df[1]
+    
+    # Sort the export columns in their numerical hierarchy order 
+    all_export_dfs.sort(key=sort_key)
+        
+    master_export_df, sort_order = all_export_dfs[0]
+    for df, sort_order in all_export_dfs[1:]:
+        master_export_df = master_export_df.merge(
+            df, how="outer", left_index=True, right_index=True)
+        
 
     # Sort by the date index
-    fc.sort_index(inplace=True)
-    fc.to_csv(f"{os.path.join(output_path_with_time, 'fc')}.csv")
+    master_export_df.sort_index(inplace=True)
+    master_export_df.to_csv(os.path.join(output_path_with_time, 
+                           config.constants.MASTER_CSV_FILENAME))
+    
+    
+    master_housekeeping_df = all_housekeeping_dfs[0]
+    for df in all_housekeeping_dfs[1:]:
+        master_housekeeping_df = master_housekeeping_df.merge(
+            df, how="outer", left_index=True, right_index=True)
 
-    # Housekeeping vars
-    figures.append(
-        plots.plot_scatter_from_variable_list_by_index(
-            fc, "Housekeeping variables",
-            [
-                "TEMPbox",
-                "vBat",
-                "msems_readings_msems_errs",
-                "msems_scan_msems_errs",
-                "msems_readings_mcpc_errs",
-                "msems_scan_mcpc_errs",
-                "pops_POPS_Flow",
-            ],
-        )
-    )
+    # Sort by the date index
+    master_housekeeping_df.sort_index(inplace=True)
+    master_housekeeping_df.to_csv(
+        os.path.join(output_path_with_time, 
+                     config.constants.HOUSEKEEPING_CSV_FILENAME))
+    
+    
+    # # Housekeeping vars
+    # figures.append(
+    #     plots.plot_scatter_from_variable_list_by_index(
+    #         master_housekeeping_df, "Housekeeping variables",
+    #         [
+    #             "flight_computer_TEMPbox",
+    #             "flight_computer_vBat",
+    #             "msems_readings_msems_errs",
+    #             "msems_scan_msems_errs",
+    #             "msems_readings_mcpc_errs",
+    #             "msems_scan_mcpc_errs",
+    #             "pops_POPS_Flow",
+    #         ],
+    #     )
+    # )
 
     # Pressure vars
     figures.append(
         plots.plot_scatter_from_variable_list_by_index(
-            fc, "Pressure variables",
+            master_export_df, "Pressure variables",
             [
-                "P_baro",
+                "flight_computer_P_baro",
                 "msems_readings_pressure",
                 "msems_scan_press_avg",
-                "stap_sample_press_mbar"
+                "stap_sample_press_mbar",
+                "smart_tether_P (mbar)",
+                "pops_P"
             ],
         )
     )

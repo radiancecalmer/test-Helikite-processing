@@ -75,7 +75,7 @@ class MSEMSReadings(Instrument):
         for var in ["msems_errs", "mcpc_errs"]:
             fig.add_trace(
             go.Scatter(
-                x=df.DateTime,
+                x=df.index,
                 y=df[var],
                 name=var))
 
@@ -193,7 +193,8 @@ msems_scan = MSEMSScan(
     "mcpc_cndt": "Float64",
     "mcpc_satt": "Float64",
     "mcpc_errs": "Int64",
-})
+},
+export_order=710)
 
 # To match a "...READINGS.txt" file
 msems_readings = MSEMSReadings(
@@ -228,7 +229,8 @@ msems_readings = MSEMSReadings(
         "mcpc_errs": "Int64",
         "mcpc_a_conc": "Float64",
         "mcpc_a_cnt": "Int64",
-    })
+    },
+    export_order=700)
 
 # To match a "...READINGS.txt" file
 msems_inverted = MSEMSInverted(
@@ -360,4 +362,5 @@ msems_inverted = MSEMSInverted(
         "Bin_Conc58": "Float64",
         "Bin_Conc59": "Float64",
         "Bin_Conc60": "Float64",
-    })
+    },
+    export_order=720)

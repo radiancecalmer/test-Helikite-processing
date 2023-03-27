@@ -38,7 +38,10 @@ class POPS(Instrument):
         # df.drop(columns=["date", "time"], inplace=True)
 
         df.columns = df.columns.str.strip()
-
+        
+        # Round the milliseconds to the nearest second
+        df['DateTime'] = pd.to_datetime(df.DateTime).round('s')
+        
         return df
 
     def create_plots(
@@ -50,7 +53,7 @@ class POPS(Instrument):
         for var in ["POPS_Flow"]:
             fig.add_trace(
             go.Scatter(
-                x=df.DateTime,
+                x=df.index,
                 y=df[var],
                 name=var))
 
@@ -104,5 +107,5 @@ pops = POPS(
         "b13": "Int64",
         "b14": "Int64",
         "b15": "Int64",
-        })
-
+        },
+        export_order=400)
