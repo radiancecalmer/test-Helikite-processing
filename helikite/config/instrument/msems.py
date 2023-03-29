@@ -21,9 +21,67 @@ from typing import Dict, Any, List
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.graph_objects import Figure
+import numpy as np
 
 
 class MSEMSInverted(Instrument):
+    def data_corrections(self, df):
+        ''' Create new columns to plot bins  '''
+        bins = df.groupby('NumBins').all().index.to_list()
+        if len(bins) != 1:
+            # Check that there is only one single value.
+            raise ValueError("There are multiple bins in this dataset. Cannot proceed")
+        else:
+            # Unpack the single value list to a single integer
+            bins = bins[0]
+        # Form column names of all bins
+        bin_diameter_columns = [f"Bin_Dia{i}" for i in range(1, bins+1)]
+
+        # Calculate the mean of the bin diameters
+        bin_diameter_average = df[bin_diameter_columns].mean()
+
+        # Convert the bin diameters to log10
+        bin_diameter_log = np.log10(bin_diameter_average)
+
+        # Calculate first and last bin limits
+        first_bin_radius = (bin_diameter_log[bin_diameter_columns[1]] - bin_diameter_log[bin_diameter_columns[0]])/2
+        first_bin_min = bin_diameter_log[bin_diameter_columns[0]] - first_bin_radius
+
+        last_bin_radius = (bin_diameter_log[bin_diameter_columns[-1]] - bin_diameter_log[bin_diameter_columns[-2]])/2
+        last_bin_max = bin_diameter_log[bin_diameter_columns[-1]] + last_bin_radius
+
+        # Create the bin limit columns and add the first limit column (so there are total n_bins + 1)
+        bin_limit_columns = [f"Bin_Lim{i}" for i in range(1, bins+1)]
+        bin_limit_columns.insert(0, "Bin_Lim0")
+
+        # Add first and last bins
+        df[bin_limit_columns[0]] = first_bin_min
+        df[bin_limit_columns[-1]] = last_bin_max
+
+        # Calculate the bin limits for all but the first and last
+        for i, col in enumerate(bin_limit_columns[1:-1]):
+            df[col] = bin_diameter_log[i] + (bin_diameter_log[i+1] - bin_diameter_log[i])/2
+
+        # Return values to the inverse of log10
+        df[bin_limit_columns] = 10 ** df[bin_limit_columns]
+
+        # Set the EndTime to the StartTime of the next row
+        df['StartTime'] = df.index
+        df['EndTime'] = pd.Series(df.index).shift(-1).values
+
+        # Set the string time values to Date objects
+        df['StartTime'] = pd.to_datetime(df['StartTime'])
+        df['EndTime'] = pd.to_datetime(df['EndTime'])
+
+        # The last row needs an end date, just add 1 minute
+        df.loc[df.index[-1], 'EndTime'] = df.loc[df.index[-1], 'StartTime'] + pd.DateOffset(minutes=1)
+
+        # Set the EndTime as one second less so that the bin end date does not equal the start of the next bin start
+        df['EndTime'] += pd.DateOffset(seconds=-1)
+
+        return df
+
+
     def file_identifier(
         self,
         first_lines_of_csv
@@ -47,19 +105,6 @@ class MSEMSInverted(Instrument):
 
         # Define the datetime column as the index
         df.set_index('DateTime', inplace=True)
-
-        if (
-            self.time_offset['hour'] != 0
-            or self.time_offset['minute'] != 0
-            or self.time_offset['second'] != 0
-        ):
-            print(f"Shifting the time offset by {self.time_offset}")
-
-            df.index = df.index + pd.DateOffset(
-                hours=self.time_offset['hour'],
-                minutes=self.time_offset['minute'],
-                seconds=self.time_offset['second'])
-
 
         return df
 
@@ -90,19 +135,6 @@ class MSEMSReadings(Instrument):
 
         # Define the datetime column as the index
         df.set_index('DateTime', inplace=True)
-
-        if (
-            self.time_offset['hour'] != 0
-            or self.time_offset['minute'] != 0
-            or self.time_offset['second'] != 0
-        ):
-            print(f"Shifting the time offset by {self.time_offset}")
-
-            df.index = df.index + pd.DateOffset(
-                hours=self.time_offset['hour'],
-                minutes=self.time_offset['minute'],
-                seconds=self.time_offset['second'])
-
 
         return df
 
@@ -153,19 +185,6 @@ class MSEMSScan(Instrument):
 
         # Define the datetime column as the index
         df.set_index('DateTime', inplace=True)
-
-        if (
-            self.time_offset['hour'] != 0
-            or self.time_offset['minute'] != 0
-            or self.time_offset['second'] != 0
-        ):
-            print(f"Shifting the time offset by {self.time_offset}")
-
-            df.index = df.index + pd.DateOffset(
-                hours=self.time_offset['hour'],
-                minutes=self.time_offset['minute'],
-                seconds=self.time_offset['second'])
-
 
         return df
 
