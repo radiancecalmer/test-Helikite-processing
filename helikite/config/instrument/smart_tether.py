@@ -37,17 +37,37 @@ class SmartTether(Instrument):
             and first_lines_of_csv[3] == "Time,Comment,Module ID,Alt (m),P (mbar),T (deg C),%RH,Wind (degrees),Wind (m/s),Supply (V),UTC Time,Latitude (deg),Longitude (deg),Course (deg),Speed (m/s)\n"):
             return True
 
-
-    def data_corrections(
+    def set_time_as_index(
         self,
         df: pd.DataFrame
     ) -> pd.DataFrame:
+        ''' Set the DateTime as index of the dataframe and correct if needed
+
+        Using values in the time_offset variable, correct DateTime index
+        '''
 
         # Date from header (stored in self.date), then add time
         df['DateTime'] = pd.to_datetime(self.date + pd.to_timedelta(df['Time']))
         df.drop(columns=["Time"], inplace=True)
 
+        # Define the datetime column as the index
+        df.set_index('DateTime', inplace=True)
+
+        if (
+            self.time_offset['hour'] != 0
+            or self.time_offset['minute'] != 0
+            or self.time_offset['second'] != 0
+        ):
+            print(f"Shifting the time offset by {self.time_offset}")
+
+            df.index = df.index + pd.DateOffset(
+                hours=self.time_offset['hour'],
+                minutes=self.time_offset['minute'],
+                seconds=self.time_offset['second'])
+
+
         return df
+
 
 smart_tether = SmartTether(
     dtype={

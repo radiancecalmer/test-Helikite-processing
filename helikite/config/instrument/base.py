@@ -17,7 +17,7 @@ class Instrument:
         comment: str | None = None,           # Ignore anything after set char
         names: List[str] | None = None,       # Names of headers if non existant
         index_col: bool | int | None = None,  # The column ID of the index
-        cols_export: List[str] = [],          # Columns to export 
+        cols_export: List[str] = [],          # Columns to export
         cols_housekeeping: List[str] = [],    # Columns to use for housekeeping
         export_order: int | None = None,      # Order hierarchy in export file
         pressure_variable: str | None = None  # The variable measuring pressure
@@ -35,13 +35,24 @@ class Instrument:
         self.cols_housekeeping = cols_housekeeping
         self.export_order = export_order
         self.pressure_variable = pressure_variable
-        
+
         # Properties that are not part of standard config, can be added
         self.filename: str | None = None
         self.date: datetime | None = None
         self.pressure_offset_housekeeping: float | None = None
         self.time_offset: Dict[str, int] = {}
 
+
+    def add_yaml_config(self, yaml_props: Dict[str, Any]):
+        ''' Add the YAML config to the Instrument class
+
+        This is called from the main() function in helikite.py
+        '''
+
+        self.filename = yaml_props['file']
+        self.date = yaml_props['date']
+        self.time_offset = yaml_props['time_offset']
+        self.pressure_offset_housekeeping = yaml_props['pressure_offset']
 
 
     def data_corrections(self, df):
@@ -52,14 +63,14 @@ class Instrument:
 
         return df
 
-    def create_plots(self, df: DataFrame):
+    def create_plots(self, df: DataFrame) -> List[Figure | None]:
         ''' Default callback for generated figures from dataframes
 
         Return nothing, as anything else will populate the list that is written out
         to HTML.
         '''
 
-        return
+        return []
 
     def file_identifier(self, first_lines_of_csv: List[str]):
         ''' Default file identifier callback
@@ -79,80 +90,93 @@ class Instrument:
         '''
 
         return None
-    
+
     def get_housekeeping_data(
             self,
-            df, 
+            df,
             pressure_housekeeping_var='housekeeping_pressure'
         ) -> pd.DataFrame:
-        ''' Returns the dataframe of housekeeping variables 
-        
+        ''' Returns the dataframe of housekeeping variables
+
         If there are no housekeeping variables, return the original dataframe
         '''
-        
+
         if self.cols_housekeeping:
+            print(f"Columns for housekeeping: "
+                  f"{', '.join(self.cols_housekeeping)}")
             return df.copy()[self.cols_housekeeping]
-        
-        return df.copy()
-        
-        
+        else:
+            print(f"Columns for housekeeping: "
+                  f"{', '.join(list(df.columns))}")
+            return df.copy()
+
+
     def get_export_data(self, df) -> pd.DataFrame:
-        ''' Returns the dataframe of only the columns to export 
-        
+        ''' Returns the dataframe of only the columns to export
+
         If there are no columns set in the Instrument class, the default
         behaviour is to return the dataframe with all of the columns
         '''
-        
+
+
+
         if self.cols_export:
+            print(f"Columns for export: {', '.join(self.cols_export)}")
             return df.copy()[self.cols_export]
         else:
-            print("There are no export variables set for this instrument, "
-                  "returning all")
+            print(f"Columns for export: {', '.join(list(df.columns))}")
             return df.copy()
-            
-    def correct_from_time_offset(
-        self, 
+
+
+    def set_time_as_index(
+        self,
         df: pd.DataFrame
     ) -> pd.DataFrame:
-        ''' Using values in the time_offset variable, correct DateTime index '''
-        
+        ''' Set the DateTime as index of the dataframe and correct if needed
+
+        Using values in the time_offset variable, correct DateTime index
+        '''
+
+        # Define the datetime column as the index
+        df.set_index('DateTime', inplace=True)
+
         if (
-            self.time_offset['hour'] != 0 
+            self.time_offset['hour'] != 0
             or self.time_offset['minute'] != 0
             or self.time_offset['second'] != 0
         ):
             print(f"Shifting the time offset by {self.time_offset}")
-            
+
             df.index = df.index + pd.DateOffset(
-                hours=self.time_offset['hour'], 
-                minutes=self.time_offset['minute'], 
+                hours=self.time_offset['hour'],
+                minutes=self.time_offset['minute'],
                 seconds=self.time_offset['second'])
-            
-        
+
+
         return df
-    
+
     def set_housekeeping_pressure_offset_variable(
-        self, 
+        self,
         df: pd.DataFrame,
         column_name="housekeeping_pressure"
     ) -> pd.DataFrame:
         ''' Generate variable to offset pressure value for housekeeping
-        
+
         Using an offset in the configuration, a new variable is created
         that offset's the instruments pressure variable. This is used to align
-        the pressure value on the plot to help align pressure. 
+        the pressure value on the plot to help align pressure.
         '''
-        
+
         if self.pressure_variable is not None:
             if self.pressure_offset_housekeeping is None:
                 # If no offset, but a pressure var exists add column of same val
-                df[column_name] = df[self.pressure_variable] 
+                df[column_name] = df[self.pressure_variable]
             else:
                 df[column_name] = df[self.pressure_variable] + self.pressure_offset_housekeeping
-        
+
         return df
-        
-        
+
+
     def read_data(
         self
     ) -> pd.DataFrame:
@@ -175,6 +199,6 @@ class Instrument:
             names=self.names,
             index_col=self.index_col,
         )
-        
-        
+
+
         return df

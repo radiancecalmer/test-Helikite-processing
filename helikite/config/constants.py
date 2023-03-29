@@ -9,5 +9,6 @@ class Constants(BaseSettings):
     HTML_OUTPUT_FILENAME: str = "housekeeping-check.html"
     MASTER_CSV_FILENAME: str = "helikite-master.csv"
     HOUSEKEEPING_CSV_FILENAME: str = "housekeeping.csv"
+    HOUSEKEEPING_VAR_PRESSURE: str = "housekeeping_pressure"
 
 constants = Constants()

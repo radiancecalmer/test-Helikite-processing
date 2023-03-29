@@ -29,25 +29,61 @@ class POPS(Instrument):
         if first_lines_of_csv[0] == "DateTime, Status, PartCt, PartCon, BL, BLTH, STD, P, TofP, POPS_Flow, PumpFB, LDTemp, LaserFB, LD_Mon, Temp, BatV, Laser_Current, Flow_Set,PumpLife_hrs, BL_Start, TH_Mult, nbins, logmin, logmax, Skip_Save, MinPeakPts,MaxPeakPts, RawPts,b0,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,b12,b13,b14,b15\n":
             return True
 
+    def set_time_as_index(
+        self,
+        df: pd.DataFrame
+    ) -> pd.DataFrame:
+        ''' Set the DateTime as index of the dataframe and correct if needed
+
+        Using values in the time_offset variable, correct DateTime index
+        '''
+
+        df['DateTime'] = pd.to_datetime(df['DateTime'], unit='s')
+        # df.drop(columns=["date", "time"], inplace=True)
+
+        # Round the milliseconds to the nearest second
+        df['DateTime'] = pd.to_datetime(df.DateTime).round('s')
+
+
+        # Define the datetime column as the index
+        df.set_index('DateTime', inplace=True)
+
+        if (
+            self.time_offset['hour'] != 0
+            or self.time_offset['minute'] != 0
+            or self.time_offset['second'] != 0
+        ):
+            print(f"Shifting the time offset by {self.time_offset}")
+
+            df.index = df.index + pd.DateOffset(
+                hours=self.time_offset['hour'],
+                minutes=self.time_offset['minute'],
+                seconds=self.time_offset['second'])
+
+
+        return df
+
     def data_corrections(
         self,
         df: pd.DataFrame
     ) -> pd.DataFrame:
 
-        df['DateTime'] = pd.to_datetime(df['DateTime'], unit='s')
-        # df.drop(columns=["date", "time"], inplace=True)
-
         df.columns = df.columns.str.strip()
-        
-        # Round the milliseconds to the nearest second
-        df['DateTime'] = pd.to_datetime(df.DateTime).round('s')
-        
+
+        # Calculate PartCon_186
+        df['PartCon_186'] = (df['b3'] + df['b4'] + df['b5'] + df['b6']
+                             + df['b7'] + df['b8'] + df['b9'] + df['b10']
+                             + df['b11'] + df['b12'] + df['b13'] + df['b14']
+                             + df['b15']) / df['POPS_Flow'].mean()
+        df.drop(columns="PartCon", inplace=True)
+
         return df
 
     def create_plots(
         self,
         df: pd.DataFrame
-    ) -> Figure:
+    ) -> List[Figure | None]:
+        figlist = []
         fig = go.Figure()
 
         for var in ["POPS_Flow"]:
@@ -59,7 +95,9 @@ class POPS(Instrument):
 
         fig.update_layout(title="POPS")
 
-        return fig
+        figlist.append(fig)
+
+        return figlist
 
 pops = POPS(
     dtype={

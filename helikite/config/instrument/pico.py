@@ -33,7 +33,7 @@ class Pico(Instrument):
         df['DateTime'] = pd.to_datetime(df['Time Stamp'],
                                         format="%d/%m/%Y %H:%M:%S.%f")
         df.drop(columns=["Time Stamp"], inplace=True)
-        
+
         # Round the milliseconds to the nearest second
         df['DateTime'] = pd.to_datetime(df.DateTime).round('s')
 
@@ -42,7 +42,8 @@ class Pico(Instrument):
     def create_plots(
         self,
         df: pd.DataFrame
-    ) -> Figure:
+    ) -> List[Figure | None]:
+        figlist = []
         fig = go.Figure()
 
         for var in ["win1Fit7", "win1Fit8"]:
@@ -54,7 +55,9 @@ class Pico(Instrument):
 
         fig.update_layout(title="Pico")
 
-        return fig
+        figlist.append(fig)
+
+        return figlist
 
 pico = Pico(
     dtype={

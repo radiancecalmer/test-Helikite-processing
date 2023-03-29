@@ -21,19 +21,38 @@ class STAP(Instrument):
         if first_lines_of_csv[0] == "datetimes,sample_press_mbar,sample_temp_C,sigmab,sigmag,sigmar,sigmab_smth,sigmag_smth,sigmar_smth\n":
             return True
 
-    def data_corrections(
+
+    def set_time_as_index(
         self,
         df: pd.DataFrame
     ) -> pd.DataFrame:
+        ''' Set the DateTime as index of the dataframe and correct if needed
 
+        Using values in the time_offset variable, correct DateTime index
+        '''
         # Column 'datetimes' represents seconds since 1904-01-01
         df['DateTime'] = pd.to_datetime(
             pd.Timestamp("1904-01-01")
             + pd.to_timedelta(df['datetimes'], unit='s'))
         df.drop(columns=["datetimes"], inplace=True)
 
-        return df
+        # Define the datetime column as the index
+        df.set_index('DateTime', inplace=True)
 
+        if (
+            self.time_offset['hour'] != 0
+            or self.time_offset['minute'] != 0
+            or self.time_offset['second'] != 0
+        ):
+            print(f"Shifting the time offset by {self.time_offset}")
+
+            df.index = df.index + pd.DateOffset(
+                hours=self.time_offset['hour'],
+                minutes=self.time_offset['minute'],
+                seconds=self.time_offset['second'])
+
+
+        return df
 
 stap = STAP(
     dtype={

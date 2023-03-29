@@ -32,14 +32,34 @@ class MSEMSInverted(Instrument):
         if "#Date\tTime\tTemp(C)\tPress(hPa)\tNumBins\tBin_Dia1\tBin_Dia2\tBin_Dia3" in first_lines_of_csv[0]:
             return True
 
-    def data_corrections(
+    def set_time_as_index(
         self,
         df: pd.DataFrame
     ) -> pd.DataFrame:
+        ''' Set the DateTime as index of the dataframe and correct if needed
+
+        Using values in the time_offset variable, correct DateTime index
+        '''
 
         df['DateTime'] = pd.to_datetime(df['#Date'] + ' ' + df['Time'],
                                         format='%y/%m/%d %H:%M:%S')
         df.drop(columns=["#Date", "Time"], inplace=True)
+
+        # Define the datetime column as the index
+        df.set_index('DateTime', inplace=True)
+
+        if (
+            self.time_offset['hour'] != 0
+            or self.time_offset['minute'] != 0
+            or self.time_offset['second'] != 0
+        ):
+            print(f"Shifting the time offset by {self.time_offset}")
+
+            df.index = df.index + pd.DateOffset(
+                hours=self.time_offset['hour'],
+                minutes=self.time_offset['minute'],
+                seconds=self.time_offset['second'])
+
 
         return df
 
@@ -55,14 +75,34 @@ class MSEMSReadings(Instrument):
         ):
             return True
 
-    def data_corrections(
+    def set_time_as_index(
         self,
         df: pd.DataFrame
     ) -> pd.DataFrame:
+        ''' Set the DateTime as index of the dataframe and correct if needed
+
+        Using values in the time_offset variable, correct DateTime index
+        '''
 
         df['DateTime'] = pd.to_datetime(df['#YY/MM/DD'] + ' ' + df['HR:MN:SC'],
                                         format='%y/%m/%d %H:%M:%S')
         df.drop(columns=["#YY/MM/DD", "HR:MN:SC"], inplace=True)
+
+        # Define the datetime column as the index
+        df.set_index('DateTime', inplace=True)
+
+        if (
+            self.time_offset['hour'] != 0
+            or self.time_offset['minute'] != 0
+            or self.time_offset['second'] != 0
+        ):
+            print(f"Shifting the time offset by {self.time_offset}")
+
+            df.index = df.index + pd.DateOffset(
+                hours=self.time_offset['hour'],
+                minutes=self.time_offset['minute'],
+                seconds=self.time_offset['second'])
+
 
         return df
 
@@ -70,6 +110,7 @@ class MSEMSReadings(Instrument):
         self,
         df: pd.DataFrame
     ) -> Figure:
+        figlist = []
         fig = go.Figure()
 
         for var in ["msems_errs", "mcpc_errs"]:
@@ -81,7 +122,9 @@ class MSEMSReadings(Instrument):
 
         fig.update_layout(title="MSEMS")
 
-        return fig
+        figlist.append(fig)
+
+        return figlist
 
 
 class MSEMSScan(Instrument):
@@ -95,15 +138,34 @@ class MSEMSScan(Instrument):
             and "#scan_conf" in first_lines_of_csv[31]
         ):
             return True
-
-    def data_corrections(
+    def set_time_as_index(
         self,
         df: pd.DataFrame
     ) -> pd.DataFrame:
+        ''' Set the DateTime as index of the dataframe and correct if needed
+
+        Using values in the time_offset variable, correct DateTime index
+        '''
 
         df['DateTime'] = pd.to_datetime(df['#YY/MM/DD'] + ' ' + df['HR:MN:SC'],
                                         format='%y/%m/%d %H:%M:%S')
         df.drop(columns=["#YY/MM/DD", "HR:MN:SC"], inplace=True)
+
+        # Define the datetime column as the index
+        df.set_index('DateTime', inplace=True)
+
+        if (
+            self.time_offset['hour'] != 0
+            or self.time_offset['minute'] != 0
+            or self.time_offset['second'] != 0
+        ):
+            print(f"Shifting the time offset by {self.time_offset}")
+
+            df.index = df.index + pd.DateOffset(
+                hours=self.time_offset['hour'],
+                minutes=self.time_offset['minute'],
+                seconds=self.time_offset['second'])
+
 
         return df
 
@@ -195,7 +257,8 @@ msems_scan = MSEMSScan(
     "mcpc_errs": "Int64",
 },
 export_order=710,
-pressure_variable='press_avg')
+pressure_variable='press_avg',
+cols_housekeeping=[])
 
 # To match a "...READINGS.txt" file
 msems_readings = MSEMSReadings(
@@ -232,7 +295,8 @@ msems_readings = MSEMSReadings(
         "mcpc_a_cnt": "Int64",
     },
     export_order=700,
-    pressure_variable='pressure')
+    pressure_variable='pressure',
+    cols_export=[])
 
 # To match a "...READINGS.txt" file
 msems_inverted = MSEMSInverted(

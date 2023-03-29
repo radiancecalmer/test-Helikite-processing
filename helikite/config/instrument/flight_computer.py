@@ -13,7 +13,9 @@ from .base import Instrument
 from typing import Dict, Any, List
 import plotly.graph_objects as go
 from plotly.graph_objects import Figure
+import plotly.express as px
 import pandas as pd
+from conversions import pressure_to_altitude
 from io import StringIO
 import csv
 
@@ -34,15 +36,62 @@ class FlightComputer(Instrument):
         df: pd.DataFrame
     ) -> pd.DataFrame:
 
-        df['DateTime'] = pd.to_datetime(df['DateTime'], unit='s')
+        print(df.index)
+        # Create altitude column by using average of first 10 seconds of data
+
+        first_10s = df.loc[
+            df.index[0]:df.index[0] + pd.Timedelta(seconds=10)
+        ]
+        average_first_10s = first_10s.mean()
+
+        print(average_first_10s[self.pressure_variable])
+        print(average_first_10s.TEMP1)
+        print(average_first_10s)
+        df['Altitude'] = df[self.pressure_variable].apply(
+            pressure_to_altitude,
+            pressure_at_start=average_first_10s[self.pressure_variable],
+            temperature_at_start=average_first_10s.TEMP1,
+            altitude_at_start=0
+        )
 
         return df
 
 
+    def set_time_as_index(
+        self,
+        df: pd.DataFrame
+    ) -> pd.DataFrame:
+        ''' Set the DateTime as index of the dataframe and correct if needed
+
+        Using values in the time_offset variable, correct DateTime index
+        '''
+
+        # Flight computer uses seconds since 1970-01-01
+        df['DateTime'] = pd.to_datetime(df['DateTime'], unit='s')
+
+        # Define the datetime column as the index
+        df.set_index('DateTime', inplace=True)
+
+        if (
+            self.time_offset['hour'] != 0
+            or self.time_offset['minute'] != 0
+            or self.time_offset['second'] != 0
+        ):
+            print(f"Shifting the time offset by {self.time_offset}")
+
+            df.index = df.index + pd.DateOffset(
+                hours=self.time_offset['hour'],
+                minutes=self.time_offset['minute'],
+                seconds=self.time_offset['second'])
+
+
+        return df
+
     def create_plots(
         self,
         df: pd.DataFrame
-    ) -> Figure:
+    ) -> List[Figure | None]:
+        figlist = []
         fig = go.Figure()
 
         # Add TEMPBox
@@ -57,11 +106,59 @@ class FlightComputer(Instrument):
             go.Scatter(
                 x=df.index,
                 y=df.vBat,
-                name="vBat"))
+                name="vBat",
+                ))
+
+    #    # Add TEMPBox
+    #     fig.add_trace(
+    #         go.Scatter(
+    #             x=df.index,
+    #             y=df.P_baro,
+    #             name="P_baro"))
 
         fig.update_layout(title="Flight Computer")
 
-        return fig
+        figlist.append(fig)
+
+
+        fig = go.Figure()
+
+        # Add TEMPBox
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df.Altitude,
+                name="TEMPBox"))
+
+        fig.update_layout(title="Altitude")
+
+        figlist.append(fig)
+
+        # Plot these vars over pressure
+        for var in ['CO2', 'TEMP1', 'TEMP2', 'TEMPsamp', 'RH1', 'RH2']:
+            fig = go.Figure()
+
+            color_scale = px.colors.sequential.Rainbow
+            normalized_index = (df.index - df.index.min()) / (df.index.max() - df.index.min())
+            colors = [color_scale[int(x * (len(color_scale)-1))] for x in normalized_index]
+
+            # Add CO2
+            fig.add_trace(
+                go.Scatter(
+                    x=df[var],
+                    y=df.P_baro,
+                    name=var,
+                    mode="markers",
+                    marker=dict(
+                        color=colors,
+                        size=2,
+                        showscale=True
+                    )))
+
+            fig.update_layout(title=var)
+            figlist.append(fig)
+
+        return figlist
 
     def read_data(
         self
@@ -117,10 +214,10 @@ flight_computer = FlightComputer(
         'RH2': "Float64",
         'vBat': "Float64",
     },
-    na_values=["NA"],
+    na_values=["NA", "-9999.00"],
     comment="#",
-    # cols_housekeeping=["TEMPbox", "vBat"],
-    cols_export=["P_baro", "CO2", "TEMP1", "TEMP2", 
+    # cols_housekeeping=["TEMPbox", "vBat", "P_baro"],
+    cols_export=["P_baro", "CO2", "TEMP1", "TEMP2",
                  "TEMPsamp", "RH1", "RH2", "RHsamp", "mFlow"],
     export_order=100,
     pressure_variable='P_baro')

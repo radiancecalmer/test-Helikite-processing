@@ -61,4 +61,3 @@ ozone_monitor = OzoneMonitor(
         "date": "str",
         "time": "str",
     })
-
