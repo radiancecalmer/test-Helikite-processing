@@ -34,12 +34,8 @@ def main():
     for instrument, props in yaml_config['instruments'].items():
 
         instrument_obj = getattr(config.instrument, props['config'])
+        instrument_obj.add_yaml_config(props)
 
-        instrument_obj.filename = props['file']
-        instrument_obj.date = props['date']
-        instrument_obj.time_offset = props['time_offset']
-        instrument_obj.pressure_offset_housekeeping = props['pressure_offset']
-        
         if instrument_obj.filename is None:
             print(f"Skipping {instrument}: No file assigned!")
             continue
@@ -48,37 +44,36 @@ def main():
 
         df = instrument_obj.read_data()
 
+        # Modify the DateTime index based off the configuration offsets
+        df = instrument_obj.set_time_as_index(df)
+
         # Apply any corrections on the data
         df = instrument_obj.data_corrections(df)
-        
-        # Set index to the DateTime column
-        df.set_index('DateTime', inplace=True)
-        
-        # Modify the DateTime index based off the configuration offsets
-        df = instrument_obj.correct_from_time_offset(df)
-        
+
         # Create housekeeping pressure variable to help align pressure visually
         df = instrument_obj.set_housekeeping_pressure_offset_variable(
-            df, column_name="housekeeping_pressure"
+            df, column_name=config.constants.HOUSEKEEPING_VAR_PRESSURE
         )
-        
+
         # Generate the plots and add them to the list
-        figures.append(instrument_obj.create_plots(df))
-        
+        figures = figures + instrument_obj.create_plots(df)
+
         df_housekeeping = instrument_obj.get_housekeeping_data(
-            df, pressure_housekeeping_var="housekeeping_pressure")
+            df,
+            pressure_housekeeping_var=config.constants.HOUSEKEEPING_VAR_PRESSURE
+        )
         df_export = instrument_obj.get_export_data(df)
-        
+
         # Save dataframe to outputs folder
         df_export.to_csv(f"{os.path.join(output_path_with_time, instrument)}.csv")
         df_export.columns = f"{instrument}_" + df_export.columns.values
-        
-        # Add dataframes to list, with the export list is as a tuple 
+
+        # Add dataframes to list, with the export list is as a tuple
         # to sequence instruments in specific order
         df_housekeeping.columns = f"{instrument}_" + df_housekeeping.columns.values
         all_housekeeping_dfs.append(df_housekeeping)
-        all_export_dfs.append((df_export, instrument_obj.export_order)) 
-        
+        all_export_dfs.append((df_export, instrument_obj.export_order))
+
         print()
 
 
@@ -87,34 +82,34 @@ def main():
         os.path.join(output_path_with_time,
                         config.constants.CONFIG_FILE)
     )
-    
+
     def sort_key(export_df):
         # Uses value in the second position of the tuple to define sort 'height'
         # ie. (df, 100) is sorted higher than (df, 50)
-        
-        if export_df[1] is None: 
+
+        if export_df[1] is None:
             # If no order set, push it to the end
             print(f"There is no sort key for columns {export_df[0].columns}. ")
             print("Placing them at the end.")
             return 999999
-        
+
         return export_df[1]
-    
-    # Sort the export columns in their numerical hierarchy order 
+
+    # Sort the export columns in their numerical hierarchy order
     all_export_dfs.sort(key=sort_key)
-        
+
     master_export_df, sort_order = all_export_dfs[0]
     for df, sort_order in all_export_dfs[1:]:
         master_export_df = master_export_df.merge(
             df, how="outer", left_index=True, right_index=True)
-        
+
 
     # Sort by the date index
     master_export_df.sort_index(inplace=True)
-    master_export_df.to_csv(os.path.join(output_path_with_time, 
+    master_export_df.to_csv(os.path.join(output_path_with_time,
                            config.constants.MASTER_CSV_FILENAME))
-    
-    
+
+
     master_housekeeping_df = all_housekeeping_dfs[0]
     for df in all_housekeeping_dfs[1:]:
         if len(df) > 0:
@@ -124,9 +119,9 @@ def main():
     # Sort by the date index
     master_housekeeping_df.sort_index(inplace=True)
     master_housekeeping_df.to_csv(
-        os.path.join(output_path_with_time, 
+        os.path.join(output_path_with_time,
                      config.constants.HOUSEKEEPING_CSV_FILENAME))
-    
+
     # Housekeeping vars
     figures.append(
         plots.plot_scatter_from_variable_list_by_index(
