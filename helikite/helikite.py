@@ -30,6 +30,9 @@ def main():
     all_export_dfs = []
     all_housekeeping_dfs = []
 
+    time_trim_start = pd.to_datetime(yaml_config['global']['time_trim']['start'])
+    time_trim_end = pd.to_datetime(yaml_config['global']['time_trim']['end'])
+
     # Go through each instrument and perform the operations on each instrument
     for instrument, props in yaml_config['instruments'].items():
 
@@ -46,6 +49,11 @@ def main():
 
         # Modify the DateTime index based off the configuration offsets
         df = instrument_obj.set_time_as_index(df)
+
+        # Using the time corrections from configuration, correct time index
+        df = instrument_obj.correct_time_from_config(
+            df, time_trim_start, time_trim_end
+        )
 
         # Apply any corrections on the data
         df = instrument_obj.data_corrections(df)
@@ -105,6 +113,7 @@ def main():
 
 
     # Sort by the date index
+    master_export_df.index = pd.to_datetime(master_export_df.index)
     master_export_df.sort_index(inplace=True)
     master_export_df.to_csv(os.path.join(output_path_with_time,
                            config.constants.MASTER_CSV_FILENAME))
@@ -116,8 +125,11 @@ def main():
             master_housekeeping_df = master_housekeeping_df.merge(
                 df, how="outer", left_index=True, right_index=True)
 
+
     # Sort by the date index
+    master_housekeeping_df.index = pd.to_datetime(master_housekeeping_df.index)
     master_housekeeping_df.sort_index(inplace=True)
+
     master_housekeeping_df.to_csv(
         os.path.join(output_path_with_time,
                      config.constants.HOUSEKEEPING_CSV_FILENAME))

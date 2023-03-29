@@ -132,13 +132,21 @@ class Instrument:
         self,
         df: pd.DataFrame
     ) -> pd.DataFrame:
-        ''' Set the DateTime as index of the dataframe and correct if needed
+        ''' This function is used to set the date in the file to the index
 
-        Using values in the time_offset variable, correct DateTime index
+        By default no action is taken, but this can be overridden in the
+        instrument class to set the date as the index.
         '''
 
-        # Define the datetime column as the index
-        df.set_index('DateTime', inplace=True)
+        return df
+
+    def correct_time_from_config(
+        self,
+        df: pd.DataFrame,
+        trim_start: pd.Timestamp | None = None,
+        trim_end: pd.Timestamp | None = None
+    ) -> pd.DataFrame:
+        ''' Correct the time offset and trim from the configuration '''
 
         if (
             self.time_offset['hour'] != 0
@@ -152,6 +160,8 @@ class Instrument:
                 minutes=self.time_offset['minute'],
                 seconds=self.time_offset['second'])
 
+       # Trim the dataframes to the time range specified in the config
+        df = df.loc[trim_start:trim_end]
 
         return df
 

@@ -5,7 +5,7 @@ import glob
 import config
 import importlib
 import os
-
+from typing import Any, Dict
 
 def get_columns_from_dtype(instrument: config.instrument.base.Instrument):
     ''' Gets the column names from the instrument config '''
@@ -127,8 +127,14 @@ def generate_config(
 
     # Go through each instrument in the __init__ of config.instrument
     instruments = config.instrument.__dict__.items()
-    yaml_config = {}
+    yaml_config: Dict[str, Any] = {}
     yaml_config['instruments'] = {}
+    yaml_config['global'] = {
+        'time_trim': {
+            'start': None,
+            'end': None,
+        }
+    }
 
     for instrument, obj in instruments:
         # If the imported object is actually an Instrument, then proceed

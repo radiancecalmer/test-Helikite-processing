@@ -44,22 +44,8 @@ class POPS(Instrument):
         # Round the milliseconds to the nearest second
         df['DateTime'] = pd.to_datetime(df.DateTime).round('s')
 
-
         # Define the datetime column as the index
         df.set_index('DateTime', inplace=True)
-
-        if (
-            self.time_offset['hour'] != 0
-            or self.time_offset['minute'] != 0
-            or self.time_offset['second'] != 0
-        ):
-            print(f"Shifting the time offset by {self.time_offset}")
-
-            df.index = df.index + pd.DateOffset(
-                hours=self.time_offset['hour'],
-                minutes=self.time_offset['minute'],
-                seconds=self.time_offset['second'])
-
 
         return df
 
