@@ -9,13 +9,13 @@ Variables to keep: DateTime, P_baro, CO2, TEMP1, TEMP2, TEMPsamp, RH1, RH2, RHsa
 Houskeeping variables: TEMPbox, vBat
 '''
 
-from .base import Instrument
+from instruments.base import Instrument
 from typing import Dict, Any, List
 import plotly.graph_objects as go
 from plotly.graph_objects import Figure
 import plotly.express as px
 import pandas as pd
-from conversions import pressure_to_altitude
+from processing.conversions import pressure_to_altitude
 from io import StringIO
 import csv
 
@@ -73,78 +73,78 @@ class FlightComputer(Instrument):
 
         return df
 
-    def create_plots(
-        self,
-        df: pd.DataFrame
-    ) -> List[Figure | None]:
-        figlist = []
-        fig = go.Figure()
+    # def create_plots(
+    #     self,
+    #     df: pd.DataFrame
+    # ) -> List[Figure | None]:
+    #     figlist = []
+    #     fig = go.Figure()
 
-        # Add TEMPBox
-        fig.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df.TEMPbox,
-                name="TEMPBox"))
+    #     # # Add TEMPBox
+    #     # fig.add_trace(
+    #     #     go.Scatter(
+    #     #         x=df.index,
+    #     #         y=df.TEMPbox,
+    #     #         name="TEMPBox"))
 
-        # Add TEMPBox
-        fig.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df.vBat,
-                name="vBat",
-                ))
+    #     # # Add TEMPBox
+    #     # fig.add_trace(
+    #     #     go.Scatter(
+    #     #         x=df.index,
+    #     #         y=df.vBat,
+    #     #         name="vBat",
+    #     #         ))
 
-    #    # Add TEMPBox
+    # #    # Add TEMPBox
+    # #     fig.add_trace(
+    # #         go.Scatter(
+    # #             x=df.index,
+    # #             y=df.P_baro,
+    # #             name="P_baro"))
+
+    #     fig.update_layout(title="Flight Computer")
+
+    #     figlist.append(fig)
+
+
+    #     fig = go.Figure()
+
+    #     # Add TEMPBox
     #     fig.add_trace(
     #         go.Scatter(
     #             x=df.index,
-    #             y=df.P_baro,
-    #             name="P_baro"))
+    #             y=df.Altitude,
+    #             name="TEMPBox"))
 
-        fig.update_layout(title="Flight Computer")
+    #     fig.update_layout(title="Altitude")
 
-        figlist.append(fig)
+    #     figlist.append(fig)
 
+    #     # Plot these vars over pressure
+    #     for var in ['CO2', 'TEMP1', 'TEMP2', 'TEMPsamp', 'RH1', 'RH2']:
+    #         fig = go.Figure()
 
-        fig = go.Figure()
+    #         color_scale = px.colors.sequential.Rainbow
+    #         normalized_index = (df.index - df.index.min()) / (df.index.max() - df.index.min())
+    #         colors = [color_scale[int(x * (len(color_scale)-1))] for x in normalized_index]
 
-        # Add TEMPBox
-        fig.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df.Altitude,
-                name="TEMPBox"))
+    #         # Add CO2
+    #         fig.add_trace(
+    #             go.Scatter(
+    #                 x=df[var],
+    #                 y=df.P_baro,
+    #                 name=var,
+    #                 mode="markers",
+    #                 marker=dict(
+    #                     color=colors,
+    #                     size=2,
+    #                     showscale=True
+    #                 )))
 
-        fig.update_layout(title="Altitude")
+    #         fig.update_layout(title=var)
+    #         figlist.append(fig)
 
-        figlist.append(fig)
-
-        # Plot these vars over pressure
-        for var in ['CO2', 'TEMP1', 'TEMP2', 'TEMPsamp', 'RH1', 'RH2']:
-            fig = go.Figure()
-
-            color_scale = px.colors.sequential.Rainbow
-            normalized_index = (df.index - df.index.min()) / (df.index.max() - df.index.min())
-            colors = [color_scale[int(x * (len(color_scale)-1))] for x in normalized_index]
-
-            # Add CO2
-            fig.add_trace(
-                go.Scatter(
-                    x=df[var],
-                    y=df.P_baro,
-                    name=var,
-                    mode="markers",
-                    marker=dict(
-                        color=colors,
-                        size=2,
-                        showscale=True
-                    )))
-
-            fig.update_layout(title=var)
-            figlist.append(fig)
-
-        return figlist
+    #     return figlist
 
     def read_data(
         self

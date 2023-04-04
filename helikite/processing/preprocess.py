@@ -2,12 +2,14 @@
 
 import yaml
 import glob
-import config
+from constants import constants
+import instruments
 import importlib
 import os
 from typing import Any, Dict
 
-def get_columns_from_dtype(instrument: config.instrument.base.Instrument):
+
+def get_columns_from_dtype(instrument: instruments.base.Instrument):
     ''' Gets the column names from the instrument config '''
 
     return list(instrument.dtype)
@@ -21,8 +23,8 @@ def read_yaml_config(file_path):
 
 def preprocess():
     yaml_config = read_yaml_config(
-        os.path.join(config.constants.INPUTS_FOLDER,
-                     config.constants.CONFIG_FILE)
+        os.path.join(constants.INPUTS_FOLDER,
+                     constants.CONFIG_FILE)
     )
 
     # Hold a list of the loaded instrument objects
@@ -31,12 +33,12 @@ def preprocess():
         instruments[instrument] = getattr(config.instrument, props['config'])
 
 
-    for filename in os.listdir(config.constants.INPUTS_FOLDER):
+    for filename in os.listdir(constants.INPUTS_FOLDER):
         # Ignore any yaml or keep files
         if filename.endswith('yaml') or filename.endswith('.keep'):
             continue
 
-        full_path = os.path.join(config.constants.INPUTS_FOLDER, filename)
+        full_path = os.path.join(constants.INPUTS_FOLDER, filename)
         print(f"Determining instrument for {filename:40} ... ", end='')
 
         # Hold a list of name matches as to not match more than once for safeguard
@@ -81,8 +83,8 @@ def preprocess():
     # Write out the updated yaml configuration
     print_preprocess_stats(yaml_config)
     export_yaml_config(yaml_config,
-                       os.path.join(config.constants.INPUTS_FOLDER,
-                                    config.constants.CONFIG_FILE))
+                       os.path.join(constants.INPUTS_FOLDER,
+                                    constants.CONFIG_FILE))
 
 def print_preprocess_stats(yaml_config):
     found = []
@@ -99,7 +101,7 @@ def print_preprocess_stats(yaml_config):
     print(f"Found:   {len(found)}: {', '.join(found)}")
     print()
 
-def export_yaml_config(yaml_config, out_location=config.constants.CONFIG_FILE):
+def export_yaml_config(yaml_config, out_location=constants.CONFIG_FILE):
     print(f"Writing YAML config to {out_location}")
     # Update YAML (will remove all commented out inputs)
     with open(out_location, 'w') as in_yaml:
@@ -109,8 +111,8 @@ def export_yaml_config(yaml_config, out_location=config.constants.CONFIG_FILE):
 def generate_config(
     overwrite=False,
     path=os.path.join(
-        config.constants.INPUTS_FOLDER,
-        config.constants.CONFIG_FILE)
+        constants.INPUTS_FOLDER,
+        constants.CONFIG_FILE)
 ) -> None:
     ''' Write out the configuration file
 

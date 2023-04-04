@@ -65,25 +65,25 @@ class POPS(Instrument):
 
         return df
 
-    def create_plots(
-        self,
-        df: pd.DataFrame
-    ) -> List[Figure | None]:
-        figlist = []
-        fig = go.Figure()
+    # def create_plots(
+    #     self,
+    #     df: pd.DataFrame
+    # ) -> List[Figure | None]:
+    #     figlist = []
+    #     fig = go.Figure()
 
-        for var in ["POPS_Flow"]:
-            fig.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df[var],
-                name=var))
+    #     for var in ["POPS_Flow"]:
+    #         fig.add_trace(
+    #         go.Scatter(
+    #             x=df.index,
+    #             y=df[var],
+    #             name=var))
 
-        fig.update_layout(title="POPS")
+    #     fig.update_layout(title="POPS")
 
-        figlist.append(fig)
+    #     figlist.append(fig)
 
-        return figlist
+    #     return figlist
 
 pops = POPS(
     dtype={

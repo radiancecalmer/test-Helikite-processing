@@ -1,28 +1,33 @@
 import sys
-from preprocess import (
-    preprocess, read_yaml_config, export_yaml_config, generate_config
-)
-import config
+from processing import preprocess
+from constants import constants
+import instruments
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly.express as px
+
 import os
 import datetime
 import plots
 from functools import reduce
+
+
 # from plots import plot_scatter_from_variable_list_by_index
 
 
 def main():
     # Get the yaml config
-    yaml_config = read_yaml_config(os.path.join(config.constants.INPUTS_FOLDER,
-                                                config.constants.CONFIG_FILE))
+    yaml_config = preprocess.read_yaml_config(
+        os.path.join(constants.INPUTS_FOLDER,
+                     constants.CONFIG_FILE))
 
     # List to add plots to that will end up being exported
     figures = []
 
     # Create a folder with the current UTC time in outputs
     output_path_with_time = os.path.join(
-        config.constants.OUTPUTS_FOLDER,
+        constants.OUTPUTS_FOLDER,
         datetime.datetime.utcnow().isoformat())
     os.makedirs(output_path_with_time)
 
@@ -36,7 +41,7 @@ def main():
     # Go through each instrument and perform the operations on each instrument
     for instrument, props in yaml_config['instruments'].items():
 
-        instrument_obj = getattr(config.instrument, props['config'])
+        instrument_obj = getattr(instruments, props['config'])
         instrument_obj.add_yaml_config(props)
 
         if instrument_obj.filename is None:
@@ -60,7 +65,7 @@ def main():
 
         # Create housekeeping pressure variable to help align pressure visually
         df = instrument_obj.set_housekeeping_pressure_offset_variable(
-            df, column_name=config.constants.HOUSEKEEPING_VAR_PRESSURE
+            df, column_name=constants.HOUSEKEEPING_VAR_PRESSURE
         )
 
         # Generate the plots and add them to the list
@@ -68,7 +73,7 @@ def main():
 
         df_housekeeping = instrument_obj.get_housekeeping_data(
             df,
-            pressure_housekeeping_var=config.constants.HOUSEKEEPING_VAR_PRESSURE
+            pressure_housekeeping_var=constants.HOUSEKEEPING_VAR_PRESSURE
         )
         df_export = instrument_obj.get_export_data(df)
 
@@ -85,10 +90,10 @@ def main():
         print()
 
 
-    export_yaml_config(
+    preprocess.export_yaml_config(
         yaml_config,
         os.path.join(output_path_with_time,
-                        config.constants.CONFIG_FILE)
+                        constants.CONFIG_FILE)
     )
 
     def sort_key(export_df):
@@ -116,7 +121,7 @@ def main():
     master_export_df.index = pd.to_datetime(master_export_df.index)
     master_export_df.sort_index(inplace=True)
     master_export_df.to_csv(os.path.join(output_path_with_time,
-                           config.constants.MASTER_CSV_FILENAME))
+                           constants.MASTER_CSV_FILENAME))
 
 
     master_housekeeping_df = all_housekeeping_dfs[0]
@@ -132,24 +137,125 @@ def main():
 
     master_housekeeping_df.to_csv(
         os.path.join(output_path_with_time,
-                     config.constants.HOUSEKEEPING_CSV_FILENAME))
+                     constants.HOUSEKEEPING_CSV_FILENAME))
 
-    # Housekeeping vars
-    figures.append(
-        plots.plot_scatter_from_variable_list_by_index(
-            master_housekeeping_df, "Housekeeping variables",
-            [
-                "flight_computer_TEMPbox",
-                "flight_computer_vBat",
-                "msems_readings_msems_errs",
-                "msems_scan_msems_errs",
-                "msems_readings_mcpc_errs",
-                "msems_scan_mcpc_errs",
-                "pops_POPS_Flow",
-            ],
-        )
-    )
+    # # Housekeeping vars
+    # figures.append(
+    #     plots.plot_scatter_from_variable_list_by_index(
+    #         master_housekeeping_df, "Housekeeping variables",
+    #         [
+    #             "flight_computer_TEMPbox",
+    #             "flight_computer_vBat",
+    #             "msems_readings_msems_errs",
+    #             "msems_scan_msems_errs",
+    #             "msems_readings_mcpc_errs",
+    #             "msems_scan_mcpc_errs",
+    #             "pops_POPS_Flow",
+    #         ],
+    #     )
+    # )
 
+    color_scale = px.colors.sequential.Rainbow
+    normalized_index = (df.index - df.index.min()) / (df.index.max() - df.index.min())
+    colors = [color_scale[int(x * (len(color_scale)-1))] for x in normalized_index]
+
+    fig = make_subplots(rows=2, cols=4, shared_yaxes=True)
+
+    fig.add_trace(go.Scatter(
+        x=master_housekeeping_df["flight_computer_TEMP1"],
+        y=master_housekeeping_df["flight_computer_Altitude"],
+        name="flight_computer_TEMP1",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=3,
+            showscale=False
+        )),
+        row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=master_housekeeping_df["flight_computer_TEMP2"],
+        y=master_housekeeping_df["flight_computer_Altitude"],
+        name="flight_computer_TEMP2",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=3,
+            showscale=False
+        )),
+        row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=master_housekeeping_df["flight_computer_RH1"],
+        y=master_housekeeping_df["flight_computer_Altitude"],
+        name="flight_computer_RH1",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=3,
+            showscale=False
+        )),
+        row=1, col=2).update_layout(xaxis_title="Relative Humidity (%)")
+
+    fig.add_trace(go.Scatter(
+        x=master_housekeeping_df["smart_tether_Wind (m/s)"],
+        y=master_housekeeping_df["flight_computer_Altitude"],
+        name="smart_tether_Wind",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=3,
+            showscale=False
+        )),
+        row=1, col=3)
+
+    fig.add_trace(go.Scatter(
+        x=master_housekeeping_df["smart_tether_Wind (degrees)"],
+        y=master_housekeeping_df["flight_computer_Altitude"],
+        name="smart_tether_Wind",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=3,
+            showscale=False
+        )),
+
+        row=1, col=4)
+    fig.add_trace(go.Scatter(
+        x=master_housekeeping_df["smart_tether_Wind (degrees)"],
+        y=master_housekeeping_df["flight_computer_Altitude"],
+        name="smart_tether_Wind",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=3,
+            showscale=False
+        )),
+        row=1, col=4)
+
+    fig.add_trace(go.Scatter(
+        x=master_housekeeping_df.index,
+        y=master_housekeeping_df["flight_computer_Altitude"],
+        name="smart_tether_Wind",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=3,
+            showscale=False
+        )),
+        row=2, col=1)
+
+    # fig.add_trace(go.Bar(
+    #     x=master_housekeeping_df.index.values,
+    #     y=["Time"],
+    # orientation='h'), row=2, col=1)
+    fig.update_yaxes(title_text="Altitude (m)", row=1, col=1)
+    fig.update_xaxes(title_text="Temperature (°C)", row=1, col=1)
+    fig.update_xaxes(title_text="Relative Humidity (%)", row=1, col=2)
+    fig.update_xaxes(title_text="Wind Speed (m/s)", row=1, col=3)
+    fig.update_xaxes(title_text="Wind Direction (degrees)", row=1, col=4)
+    fig.update_layout(coloraxis=dict(colorbar=dict(orientation='h', y=-0.15)))
+
+    figures.append(fig)
     # Housekeeping pressure vars
     figures.append(
         plots.plot_scatter_from_variable_list_by_index(
@@ -181,18 +287,18 @@ def main():
     )
 
     html_filename = os.path.join(output_path_with_time,
-                                 config.constants.HTML_OUTPUT_FILENAME)
+                                 constants.HTML_OUTPUT_FILENAME)
     plots.write_plots_to_html(figures, html_filename)
 
 if __name__ == '__main__':
     # If docker arg given, don't run main
     if len(sys.argv) > 1:
         if sys.argv[1] == 'preprocess':
-            generate_config(overwrite=False)  # Write conf file if doesn't exist
-            preprocess()
+            preprocess.generate_config(overwrite=False)  # Write conf file
+            preprocess.preprocess()
         elif sys.argv[1] == 'generate_config':
             print("Generating YAML configuration in input folder")
-            generate_config(overwrite=True)
+            preprocess.generate_config(overwrite=True)
         else:
             print("Unknown argument. Options are: preprocess, generate_config")
     else:

@@ -7,15 +7,18 @@ readme = "README.md"
 packages = [{include = "helikite_data_processing"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "3.10.10"
 pandas = "^1.5.3"
 pydantic = "^1.10.5"
 plotly = "^5.13.1"
 pyyaml = "^6.0"
+scipy = "^1.10.1"
+matplotlib = "^3.7.1"
 
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"
+mypy = "^1.1.1"
 
 [build-system]
 requires = ["poetry-core"]

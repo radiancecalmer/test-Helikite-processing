@@ -138,25 +138,25 @@ class MSEMSReadings(Instrument):
 
         return df
 
-    def create_plots(
-        self,
-        df: pd.DataFrame
-    ) -> Figure:
-        figlist = []
-        fig = go.Figure()
+    # def create_plots(
+    #     self,
+    #     df: pd.DataFrame
+    # ) -> Figure:
+    #     figlist = []
+    #     fig = go.Figure()
 
-        for var in ["msems_errs", "mcpc_errs"]:
-            fig.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df[var],
-                name=var))
+    #     for var in ["msems_errs", "mcpc_errs"]:
+    #         fig.add_trace(
+    #         go.Scatter(
+    #             x=df.index,
+    #             y=df[var],
+    #             name=var))
 
-        fig.update_layout(title="MSEMS")
+    #     fig.update_layout(title="MSEMS")
 
-        figlist.append(fig)
+    #     figlist.append(fig)
 
-        return figlist
+    #     return figlist
 
 
 class MSEMSScan(Instrument):
