@@ -26,4 +26,4 @@ RUN groupadd -g $GROUP_ID helikite && \
 USER helikite
 
 # Set the default command to run when the container starts
-ENTRYPOINT ["python", "helikite.py"]
+ENTRYPOINT ["python", "-u", "helikite.py"]

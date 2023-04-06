@@ -1,5 +1,5 @@
 import sys
-from processing import preprocess
+from processing import preprocess, sorting
 from constants import constants
 import instruments
 import pandas as pd
@@ -16,12 +16,16 @@ import logging
 # Add handler for logging to console
 # logging.root.setLevel(logging.NOTSET)
 # logging.basicConfig(level=logging.NOTSET)
-log_format = logging.Formatter("%(asctime)s [%(levelname)-5.5s](%(name)s) %(message)s")
-
+logfile_format = logging.Formatter(
+    "%(asctime)s [%(levelname)-7.7s] (%(name)25.25s) %(message)s"
+)
+logconsole_format = logging.Formatter(
+    "%(asctime)s [%(levelname)-7.7s] %(message)s"
+)
 # Define a console handler
 console_handler = logging.StreamHandler()
 console_handler.setLevel(constants.LOGLEVEL_CONSOLE)
-console_handler.setFormatter(log_format)
+console_handler.setFormatter(logconsole_format)
 logging.getLogger().addHandler(console_handler)
 
 # Define logger for this file
@@ -48,7 +52,7 @@ def main():
     logfile_handler = logging.FileHandler(os.path.join(output_path_with_time,
                                                        "helikite.log"))
     logfile_handler.setLevel(constants.LOGLEVEL_FILE)
-    logfile_handler.setFormatter(log_format)
+    logfile_handler.setFormatter(logfile_format)
     logging.getLogger().addHandler(logfile_handler)
 
     # Append each df to this to eventually join on a key
@@ -91,21 +95,14 @@ def main():
         # Generate the plots and add them to the list
         figures = figures + instrument_obj.create_plots(df)
 
-        df_housekeeping = instrument_obj.get_housekeeping_data(
-            df,
-            pressure_housekeeping_var=constants.HOUSEKEEPING_VAR_PRESSURE
-        )
-        df_export = instrument_obj.get_export_data(df)
-
         # Save dataframe to outputs folder
-        df_export.to_csv(f"{os.path.join(output_path_with_time, instrument)}.csv")
-        df_export.columns = f"{instrument}_" + df_export.columns.values
+        df.to_csv(f"{os.path.join(output_path_with_time, instrument)}.csv")
 
-        # Add dataframes to list, with the export list is as a tuple
-        # to sequence instruments in specific order
-        df_housekeeping.columns = f"{instrument}_" + df_housekeeping.columns.values
-        all_housekeeping_dfs.append(df_housekeeping)
-        all_export_dfs.append((df_export, instrument_obj.export_order))
+        # Prepare df for combining with other instruments
+        df.columns = f"{instrument}_" + df.columns.values
+
+        # Add tuple of df and export order to df merge list
+        all_export_dfs.append((df, instrument_obj.export_order))
 
     preprocess.export_yaml_config(
         yaml_config,
@@ -113,24 +110,14 @@ def main():
                         constants.CONFIG_FILE)
     )
 
-    def sort_key(export_df):
-        # Uses value in the second position of the tuple to define sort 'height'
-        # ie. (df, 100) is sorted higher than (df, 50)
-
-        if export_df[1] is None:
-            # If no order set, push it to the end
-            logger.info(
-                f"There is no sort key for columns {export_df[0].columns}. "
-                "Placing them at the end.")
-            return 999999
-
-        return export_df[1]
-
     # Sort the export columns in their numerical hierarchy order
-    all_export_dfs.sort(key=sort_key)
+    all_export_dfs.sort(key=sorting.df_column_sort_key)
 
-    master_export_df, sort_order = all_export_dfs[0]
-    for df, sort_order in all_export_dfs[1:]:
+    # Flatten structure of list of tuples to list of dfs
+    all_export_dfs = [df for df, sort_order in all_export_dfs]
+
+    master_export_df = all_export_dfs[0]  # First df is the master
+    for df in all_export_dfs[1:]:         # Merge the rest
         master_export_df = master_export_df.merge(
             df, how="outer", left_index=True, right_index=True)
 
@@ -142,20 +129,20 @@ def main():
                            constants.MASTER_CSV_FILENAME))
 
 
-    master_housekeeping_df = all_housekeeping_dfs[0]
-    for df in all_housekeeping_dfs[1:]:
-        if len(df) > 0:
-            master_housekeeping_df = master_housekeeping_df.merge(
-                df, how="outer", left_index=True, right_index=True)
+    # master_housekeeping_df = all_housekeeping_dfs[0]
+    # for df in all_housekeeping_dfs[1:]:
+    #     if len(df) > 0:
+    #         master_housekeeping_df = master_housekeeping_df.merge(
+    #             df, how="outer", left_index=True, right_index=True)
 
 
-    # Sort by the date index
-    master_housekeeping_df.index = pd.to_datetime(master_housekeeping_df.index)
-    master_housekeeping_df.sort_index(inplace=True)
+    # # Sort by the date index
+    # master_housekeeping_df.index = pd.to_datetime(master_housekeeping_df.index)
+    # master_housekeeping_df.sort_index(inplace=True)
 
-    master_housekeeping_df.to_csv(
-        os.path.join(output_path_with_time,
-                     constants.HOUSEKEEPING_CSV_FILENAME))
+    # master_housekeeping_df.to_csv(
+    #     os.path.join(output_path_with_time,
+    #                  constants.HOUSEKEEPING_CSV_FILENAME))
 
     # # Housekeeping vars
     # figures.append(
@@ -174,14 +161,14 @@ def main():
     # )
 
     color_scale = px.colors.sequential.Rainbow
-    normalized_index = (df.index - df.index.min()) / (df.index.max() - df.index.min())
+    normalized_index = (master_export_df.index - master_export_df.index.min()) / (master_export_df.index.max() - master_export_df.index.min())
     colors = [color_scale[int(x * (len(color_scale)-1))] for x in normalized_index]
 
     fig = make_subplots(rows=2, cols=4, shared_yaxes=False)
 
     fig.add_trace(go.Scatter(
-        x=master_housekeeping_df["flight_computer_TEMP1"],
-        y=master_housekeeping_df["flight_computer_Altitude"],
+        x=master_export_df["flight_computer_TEMP1"],
+        y=master_export_df["flight_computer_Altitude"],
         name="flight_computer_TEMP1",
         mode="markers",
         marker=dict(
@@ -191,8 +178,8 @@ def main():
         )),
         row=1, col=1)
     fig.add_trace(go.Scatter(
-        x=master_housekeeping_df["flight_computer_TEMP2"],
-        y=master_housekeeping_df["flight_computer_Altitude"],
+        x=master_export_df["flight_computer_TEMP2"],
+        y=master_export_df["flight_computer_Altitude"],
         name="flight_computer_TEMP2",
         mode="markers",
         marker=dict(
@@ -203,8 +190,8 @@ def main():
         row=1, col=1)
 
     fig.add_trace(go.Scatter(
-        x=master_housekeeping_df["flight_computer_RH1"],
-        y=master_housekeeping_df["flight_computer_Altitude"],
+        x=master_export_df["flight_computer_RH1"],
+        y=master_export_df["flight_computer_Altitude"],
         name="flight_computer_RH1",
         mode="markers",
         marker=dict(
@@ -215,8 +202,8 @@ def main():
         row=1, col=2).update_layout(xaxis_title="Relative Humidity (%)")
 
     fig.add_trace(go.Scatter(
-        x=master_housekeeping_df["smart_tether_Wind (m/s)"],
-        y=master_housekeeping_df["flight_computer_Altitude"],
+        x=master_export_df["smart_tether_Wind (m/s)"],
+        y=master_export_df["flight_computer_Altitude"],
         name="smart_tether_Wind",
         mode="markers",
         marker=dict(
@@ -227,8 +214,8 @@ def main():
         row=1, col=3)
 
     fig.add_trace(go.Scatter(
-        x=master_housekeeping_df["smart_tether_Wind (degrees)"],
-        y=master_housekeeping_df["flight_computer_Altitude"],
+        x=master_export_df["smart_tether_Wind (degrees)"],
+        y=master_export_df["flight_computer_Altitude"],
         name="smart_tether_Wind",
         mode="markers",
         marker=dict(
@@ -239,8 +226,8 @@ def main():
 
         row=1, col=4)
     fig.add_trace(go.Scatter(
-        x=master_housekeeping_df["smart_tether_Wind (degrees)"],
-        y=master_housekeeping_df["flight_computer_Altitude"],
+        x=master_export_df["smart_tether_Wind (degrees)"],
+        y=master_export_df["flight_computer_Altitude"],
         name="smart_tether_Wind",
         mode="markers",
         marker=dict(
@@ -251,8 +238,8 @@ def main():
         row=1, col=4)
 
     fig.add_trace(go.Scatter(
-        x=master_housekeeping_df.index,
-        y=master_housekeeping_df["flight_computer_Altitude"],
+        x=master_export_df.index,
+        y=master_export_df["flight_computer_Altitude"],
         name="smart_tether_Wind",
         mode="markers",
         marker=dict(
@@ -277,7 +264,7 @@ def main():
     # Housekeeping pressure vars
     figures.append(
         plots.plot_scatter_from_variable_list_by_index(
-            master_housekeeping_df, "Housekeeping pressure variables",
+            master_export_df, "Housekeeping pressure variables",
             [
                 "flight_computer_housekeeping_pressure",
                 "msems_readings_housekeeping_pressure",
@@ -304,14 +291,16 @@ def main():
         )
     )
     import numpy as np
-    z = master_housekeeping_df[[f"msems_inverted_Bin_Conc{x}" for x in range(1, 60)]]
-    y = master_housekeeping_df[[f"msems_inverted_Bin_Lim{x}" for x in range(1, 60)]]
-    x = master_housekeeping_df[['msems_inverted_StartTime']]
+    z = master_export_df[[f"msems_inverted_Bin_Conc{x}" for x in range(1, 60)]].dropna()
+    y = master_export_df[[f"msems_inverted_Bin_Lim{x}" for x in range(1, 60)]].dropna()
+    x = master_export_df[['msems_inverted_StartTime']].dropna()
     fig = go.Figure(
         data=go.Heatmap(
         z=z.T,
-        x=x,
-        y=y.mean(), colorscale = 'Viridis', zmin=-200, zmid=1400, zmax=1400))
+        x=x.index.values,
+        y=y.mean(), colorscale = 'Viridis',
+        #zmin=-200, zmid=1400, zmax=1400
+        ))
     fig.update_yaxes(type='log',
                     range=(np.log10(y.mean()[0]), np.log10(y.mean()[-1])),
                     tickformat="f",

@@ -13,4 +13,5 @@ class Constants(BaseSettings):
     LOGLEVEL_CONSOLE: str = "INFO"
     LOGLEVEL_FILE: str = "DEBUG"
 
+
 constants = Constants()

@@ -41,7 +41,7 @@ class FlightComputer(Instrument):
         first_10s = df.loc[
             df.index[0]:df.index[0] + pd.Timedelta(seconds=10)
         ]
-        average_first_10s = first_10s.mean()
+        average_first_10s = first_10s.mean(numeric_only=True)
 
         df['Altitude'] = df[self.pressure_variable].apply(
             pressure_to_altitude,

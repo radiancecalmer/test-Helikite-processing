@@ -16,6 +16,11 @@ from .base import Instrument
 from typing import Dict, Any, List
 import datetime
 import pandas as pd
+import logging
+from constants import constants
+
+logger = logging.getLogger(__name__)
+logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
 
 class SmartTether(Instrument):
@@ -44,10 +49,26 @@ class SmartTether(Instrument):
         ''' Set the DateTime as index of the dataframe and correct if needed
 
         Using values in the time_offset variable, correct DateTime index
+
+        As the rows store only a time variable, a rollover at midnight is
+        possible. This function checks for this and corrects the date if needed.
         '''
 
         # Date from header (stored in self.date), then add time
         df['DateTime'] = pd.to_datetime(self.date + pd.to_timedelta(df['Time']))
+
+        # Check for midnight rollover. Can assume that the data will never be
+        # longer than a day, so just check once for a midnight rollover
+        start_time = pd.Timestamp(df.iloc[0]['Time'])
+        for i, row in df.iterrows():
+            # check if the timestamp is earlier than the start time (i.e. it's
+            # the next day)
+            if pd.Timestamp(row['Time']) < start_time:
+                # add a day to the date column
+                logger.info("SmartTether date passes midnight. Correcting...")
+                logger.info(F"Adding a day at: {df.at[i, 'DateTime']}")
+                df.at[i, 'DateTime'] += pd.Timedelta(days=1)
+
         df.drop(columns=["Time"], inplace=True)
 
         # Define the datetime column as the index
