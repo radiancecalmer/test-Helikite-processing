@@ -1,6 +1,11 @@
 import plotly.graph_objects as go
 import pandas as pd
 from typing import List
+import logging
+from constants import constants
+
+logger = logging.getLogger(__name__)
+logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
 
 def plot_scatter_from_variable_list_by_index(
@@ -29,7 +34,7 @@ def write_plots_to_html(
     # instrument may not have a figure to create, None is default
     figures = [i for i in figures if i is not None]
 
-    print(f"Writing {len(figures)} figures to {filename}")
+    logger.info(f"Writing {len(figures)} figures to {filename}")
     # Write out all of the figures to HTML
     with open(filename, 'w') as f:
         # Write figures. They'll be sorted by the order they were added

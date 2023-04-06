@@ -36,7 +36,6 @@ class FlightComputer(Instrument):
         df: pd.DataFrame
     ) -> pd.DataFrame:
 
-        print(df.index)
         # Create altitude column by using average of first 10 seconds of data
 
         first_10s = df.loc[
@@ -44,9 +43,6 @@ class FlightComputer(Instrument):
         ]
         average_first_10s = first_10s.mean()
 
-        print(average_first_10s[self.pressure_variable])
-        print(average_first_10s.TEMP1)
-        print(average_first_10s)
         df['Altitude'] = df[self.pressure_variable].apply(
             pressure_to_altitude,
             pressure_at_start=average_first_10s[self.pressure_variable],

@@ -7,6 +7,10 @@ import instruments
 import importlib
 import os
 from typing import Any, Dict
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
 
 def get_columns_from_dtype(instrument: instruments.base.Instrument):
@@ -39,7 +43,7 @@ def preprocess():
             continue
 
         full_path = os.path.join(constants.INPUTS_FOLDER, filename)
-        print(f"Determining instrument for {filename:40} ... ", end='')
+        logger.info(f"Determining instrument for {filename:40} ... ", end='')
 
         # Hold a list of name matches as to not match more than once for safeguard
         successful_matches = []
@@ -51,21 +55,22 @@ def preprocess():
             for name, obj in instruments.items():
                 if obj.file_identifier(header_lines):
                     # Increment count of matches and also add match to list
-                    print("Instrument:", name)
+                    logger.info("Instrument:", name)
                     if instrument_match_count > 0:
                         raise ValueError(
-                            f"Filename: {full_path} matched too many instrument "
-                            "configurations. Check that there are no duplicate "
-                            "files in the input directory, or that the "
-                            "file_identifier function for the instrument is not "
-                            "too weak in matching."
+                            f"Filename: {full_path} matched too many "
+                            "instrument configurations. Check that there are "
+                            "no duplicate files in the input directory, or "
+                            "that the file_identifier function for the "
+                            "instrument is not too weak in matching."
                         )
                     if name in successful_matches:
                         raise ValueError(
-                            f"Instrument: {name} matched more than once. Check "
-                            "that there are no duplicate files in the input "
-                            "directory, or that the file_identifier function for "
-                            "the instrument is not too weak in matching."
+                            f"Instrument: {name} matched more than once. "
+                            "Check that there are no duplicate files in the "
+                            "input directory, or that the file_identifier "
+                            "function for the instrument is not too weak in "
+                            "matching."
                         )
                     successful_matches.append(name)
                     instrument_match_count += 1
@@ -78,7 +83,7 @@ def preprocess():
                     props['date'] = obj.date_extractor(header_lines)
 
             if instrument_match_count == 0:
-                print("!! Not found !!")
+                logger.warning("Not instrument found !!")
 
     # Write out the updated yaml configuration
     print_preprocess_stats(yaml_config)
@@ -95,14 +100,12 @@ def print_preprocess_stats(yaml_config):
         else:
             found.append(instrument)
 
-    print()
-    print("File preprocessing statistics:")
-    print(f"Missing: {len(not_found)}: {', '.join(not_found)}")
-    print(f"Found:   {len(found)}: {', '.join(found)}")
-    print()
+    logger.info("\nFile preprocessing statistics:")
+    logger.info(f"Missing: {len(not_found)}: {', '.join(not_found)}")
+    logger.info(f"Found:   {len(found)}: {', '.join(found)}\n")
 
 def export_yaml_config(yaml_config, out_location=constants.CONFIG_FILE):
-    print(f"Writing YAML config to {out_location}")
+    logger.info(f"Writing YAML config to {out_location}")
     # Update YAML (will remove all commented out inputs)
     with open(out_location, 'w') as in_yaml:
         yaml.dump(yaml_config, in_yaml)
@@ -125,7 +128,7 @@ def generate_config(
         # Escape if overwrite if false and the file exists
         return
 
-    print("Creating config YAML file...\n")
+    logger.info("Creating config YAML file...\n")
 
     # Go through each instrument in the __init__ of config.instrument
     instruments = config.instrument.__dict__.items()

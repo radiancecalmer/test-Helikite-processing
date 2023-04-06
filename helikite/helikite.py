@@ -11,22 +11,22 @@ import os
 import datetime
 import plots
 from functools import reduce
-import sys
 import logging
 
 # Add handler for logging to console
-logging.root.setLevel(logging.NOTSET)
-logging.basicConfig(level=logging.NOTSET)
-log_format = logging.Formatter("%(asctime)s [%(levelname)-5.5s]  %(message)s")
+# logging.root.setLevel(logging.NOTSET)
+# logging.basicConfig(level=logging.NOTSET)
+log_format = logging.Formatter("%(asctime)s [%(levelname)-5.5s](%(name)s) %(message)s")
 
 # Define a console handler
-console_handler = logging.StreamHandler(sys.stdout)
+console_handler = logging.StreamHandler()
 console_handler.setLevel(constants.LOGLEVEL_CONSOLE)
 console_handler.setFormatter(log_format)
 logging.getLogger().addHandler(console_handler)
 
 # Define logger for this file
 logger = logging.getLogger(__name__)
+logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
 
 def main():
@@ -65,10 +65,10 @@ def main():
         instrument_obj.add_yaml_config(props)
 
         if instrument_obj.filename is None:
-            print(f"Skipping {instrument}: No file assigned!")
+            logger.warning(f"Skipping {instrument}: No file assigned!")
             continue
         else:
-            print(f"Processing {instrument}: {instrument_obj.filename}")
+            logger.info(f"Processing {instrument}: {instrument_obj.filename}")
 
         df = instrument_obj.read_data()
 
@@ -107,9 +107,6 @@ def main():
         all_housekeeping_dfs.append(df_housekeeping)
         all_export_dfs.append((df_export, instrument_obj.export_order))
 
-        print()
-
-
     preprocess.export_yaml_config(
         yaml_config,
         os.path.join(output_path_with_time,
@@ -122,8 +119,9 @@ def main():
 
         if export_df[1] is None:
             # If no order set, push it to the end
-            print(f"There is no sort key for columns {export_df[0].columns}. ")
-            print("Placing them at the end.")
+            logger.info(
+                f"There is no sort key for columns {export_df[0].columns}. "
+                "Placing them at the end.")
             return 999999
 
         return export_df[1]
@@ -332,10 +330,10 @@ if __name__ == '__main__':
             preprocess.generate_config(overwrite=False)  # Write conf file
             preprocess.preprocess()
         elif sys.argv[1] == 'generate_config':
-            print("Generating YAML configuration in input folder")
+            logger.info("Generating YAML configuration in input folder")
             preprocess.generate_config(overwrite=True)
         else:
-            print("Unknown argument. Options are: preprocess, generate_config")
+            logger.error("Unknown argument. Options are: preprocess, generate_config")
     else:
         # If no args, run the main application
         main()

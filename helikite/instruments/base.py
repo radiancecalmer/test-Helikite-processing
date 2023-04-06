@@ -5,20 +5,10 @@ from plotly.graph_objects import Figure
 from datetime import datetime
 import pandas as pd
 import logging
-import sys
+from constants import constants
 
 logger = logging.getLogger(__name__)
-# Set up logging to a file
-# logging.basicConfig(filename='example.log', level=logging.DEBUG)
-
-# Create a handler that outputs to the console
-# logging.getLogger().addHandler(logging.StreamHandler())
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setLevel(logging.INFO)
-logging.getLogger().addHandler(console_handler)
-# Add the console handler to the logger
-# logger.addHandler(console_handler)
-
+logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
 class Instrument:
     def __init__(
