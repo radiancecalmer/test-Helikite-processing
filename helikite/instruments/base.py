@@ -4,6 +4,20 @@ from pandas import DataFrame
 from plotly.graph_objects import Figure
 from datetime import datetime
 import pandas as pd
+import logging
+import sys
+
+logger = logging.getLogger(__name__)
+# Set up logging to a file
+# logging.basicConfig(filename='example.log', level=logging.DEBUG)
+
+# Create a handler that outputs to the console
+# logging.getLogger().addHandler(logging.StreamHandler())
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.INFO)
+logging.getLogger().addHandler(console_handler)
+# Add the console handler to the logger
+# logger.addHandler(console_handler)
 
 
 class Instrument:
@@ -41,6 +55,7 @@ class Instrument:
         self.date: datetime | None = None
         self.pressure_offset_housekeeping: float | None = None
         self.time_offset: Dict[str, int] = {}
+        logger.info("Hello")
 
 
     def add_yaml_config(self, yaml_props: Dict[str, Any]):
@@ -102,12 +117,12 @@ class Instrument:
         '''
 
         if self.cols_housekeeping:
-            print(f"Columns for housekeeping: "
-                  f"{', '.join(self.cols_housekeeping)}")
+            logger.debug(f"Columns for housekeeping: "
+                         f"{', '.join(self.cols_housekeeping)}")
             return df.copy()[self.cols_housekeeping]
         else:
-            print(f"Columns for housekeeping: "
-                  f"{', '.join(list(df.columns))}")
+            logger.debug(f"Columns for housekeeping: "
+                         f"{', '.join(list(df.columns))}")
             return df.copy()
 
 
@@ -121,10 +136,10 @@ class Instrument:
 
 
         if self.cols_export:
-            print(f"Columns for export: {', '.join(self.cols_export)}")
+            logger.debug(f"Columns for export: {', '.join(self.cols_export)}")
             return df.copy()[self.cols_export]
         else:
-            print(f"Columns for export: {', '.join(list(df.columns))}")
+            logger.debug(f"Columns for export: {', '.join(list(df.columns))}")
             return df.copy()
 
 
@@ -153,7 +168,7 @@ class Instrument:
             or self.time_offset['minute'] != 0
             or self.time_offset['second'] != 0
         ):
-            print(f"Shifting the time offset by {self.time_offset}")
+            logger.info(f"Shifting the time offset by {self.time_offset}")
 
             df.index = df.index + pd.DateOffset(
                 hours=self.time_offset['hour'],

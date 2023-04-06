@@ -10,5 +10,7 @@ class Constants(BaseSettings):
     MASTER_CSV_FILENAME: str = "helikite-master.csv"
     HOUSEKEEPING_CSV_FILENAME: str = "housekeeping.csv"
     HOUSEKEEPING_VAR_PRESSURE: str = "housekeeping_pressure"
+    LOGLEVEL_CONSOLE: str = "INFO"
+    LOGLEVEL_FILE: str = "DEBUG"
 
 constants = Constants()

@@ -11,9 +11,22 @@ import os
 import datetime
 import plots
 from functools import reduce
+import sys
+import logging
 
+# Add handler for logging to console
+logging.root.setLevel(logging.NOTSET)
+logging.basicConfig(level=logging.NOTSET)
+log_format = logging.Formatter("%(asctime)s [%(levelname)-5.5s]  %(message)s")
 
-# from plots import plot_scatter_from_variable_list_by_index
+# Define a console handler
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(constants.LOGLEVEL_CONSOLE)
+console_handler.setFormatter(log_format)
+logging.getLogger().addHandler(console_handler)
+
+# Define logger for this file
+logger = logging.getLogger(__name__)
 
 
 def main():
@@ -30,6 +43,13 @@ def main():
         constants.OUTPUTS_FOLDER,
         datetime.datetime.utcnow().isoformat())
     os.makedirs(output_path_with_time)
+
+    # Add a file logger
+    logfile_handler = logging.FileHandler(os.path.join(output_path_with_time,
+                                                       "helikite.log"))
+    logfile_handler.setLevel(constants.LOGLEVEL_FILE)
+    logfile_handler.setFormatter(log_format)
+    logging.getLogger().addHandler(logfile_handler)
 
     # Append each df to this to eventually join on a key
     all_export_dfs = []
@@ -159,7 +179,7 @@ def main():
     normalized_index = (df.index - df.index.min()) / (df.index.max() - df.index.min())
     colors = [color_scale[int(x * (len(color_scale)-1))] for x in normalized_index]
 
-    fig = make_subplots(rows=2, cols=4, shared_yaxes=True)
+    fig = make_subplots(rows=2, cols=4, shared_yaxes=False)
 
     fig.add_trace(go.Scatter(
         x=master_housekeeping_df["flight_computer_TEMP1"],
@@ -285,7 +305,22 @@ def main():
             ],
         )
     )
-
+    import numpy as np
+    z = master_housekeeping_df[[f"msems_inverted_Bin_Conc{x}" for x in range(1, 60)]]
+    y = master_housekeeping_df[[f"msems_inverted_Bin_Lim{x}" for x in range(1, 60)]]
+    x = master_housekeeping_df[['msems_inverted_StartTime']]
+    fig = go.Figure(
+        data=go.Heatmap(
+        z=z.T,
+        x=x,
+        y=y.mean(), colorscale = 'Viridis', zmin=-200, zmid=1400, zmax=1400))
+    fig.update_yaxes(type='log',
+                    range=(np.log10(y.mean()[0]), np.log10(y.mean()[-1])),
+                    tickformat="f",
+                    nticks=4
+                    )
+    # fig.show()
+    figures.append(fig)
     html_filename = os.path.join(output_path_with_time,
                                  constants.HTML_OUTPUT_FILENAME)
     plots.write_plots_to_html(figures, html_filename)
@@ -302,5 +337,5 @@ if __name__ == '__main__':
         else:
             print("Unknown argument. Options are: preprocess, generate_config")
     else:
-        # If no args, runt he main application
+        # If no args, run the main application
         main()
