@@ -7,7 +7,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
 
-def df_column_sort_key(export_df: Tuple[pd.DataFrame, int | None]):
+def df_column_sort_key(
+        export_df: Tuple[pd.DataFrame, int, List[str], List[str] | None]
+    ) -> pd.DataFrame:
     ''' Sort key for ordering of exported dataframes
 
     Uses value in the second position of the tuple to define sort 'height'
@@ -15,8 +17,8 @@ def df_column_sort_key(export_df: Tuple[pd.DataFrame, int | None]):
 
     Parameters
     ----------
-    export_df : Tuple[pd.DataFrame, int | None]
-        Tuple of dataframe and sort order
+    export_df : Tuple[pd.DataFrame, int, List[str], List[str] | None]
+        Tuple of dataframe, sort order, col for housekeeping, cols for export
 
     Returns
     -------

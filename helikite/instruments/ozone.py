@@ -14,6 +14,14 @@ import pandas as pd
 
 
 class OzoneMonitor(Instrument):
+    def __init__(
+        self,
+        *args,
+        **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.name = 'ozone'
+
     def file_identifier(
         self,
         first_lines_of_csv
@@ -60,4 +68,6 @@ ozone_monitor = OzoneMonitor(
         "flow_rate": "Int64",
         "date": "str",
         "time": "str",
-    })
+    },
+    cols_export=["ozone"],
+    cols_housekeeping=["ozone"])

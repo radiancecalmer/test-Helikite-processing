@@ -25,6 +25,14 @@ import numpy as np
 
 
 class MSEMSInverted(Instrument):
+    def __init__(
+        self,
+        *args,
+        **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.name = 'msems_inverted'
+
     def data_corrections(self, df):
         ''' Create new columns to plot bins  '''
         bins = df.groupby('NumBins').all().index.to_list()
@@ -110,6 +118,13 @@ class MSEMSInverted(Instrument):
 
 class MSEMSReadings(Instrument):
     # To match a "...READINGS.txt" file
+    def __init__(
+        self,
+        *args,
+        **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.name = 'msems_readings'
 
     def file_identifier(
         self,
@@ -138,29 +153,15 @@ class MSEMSReadings(Instrument):
 
         return df
 
-    # def create_plots(
-    #     self,
-    #     df: pd.DataFrame
-    # ) -> Figure:
-    #     figlist = []
-    #     fig = go.Figure()
-
-    #     for var in ["msems_errs", "mcpc_errs"]:
-    #         fig.add_trace(
-    #         go.Scatter(
-    #             x=df.index,
-    #             y=df[var],
-    #             name=var))
-
-    #     fig.update_layout(title="MSEMS")
-
-    #     figlist.append(fig)
-
-    #     return figlist
-
-
 class MSEMSScan(Instrument):
     # To match a "...SCAN.txt" file
+    def __init__(
+        self,
+        *args,
+        **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.name = 'msems_scan'
 
     def file_identifier(
         self,
@@ -277,6 +278,7 @@ msems_scan = MSEMSScan(
 },
 export_order=710,
 pressure_variable='press_avg',
+cols_export=[],
 cols_housekeeping=[])
 
 # To match a "...READINGS.txt" file
@@ -315,7 +317,8 @@ msems_readings = MSEMSReadings(
     },
     export_order=700,
     pressure_variable='pressure',
-    cols_export=[])
+    cols_export=[],
+    cols_housekeeping=[])
 
 # To match a "...READINGS.txt" file
 msems_inverted = MSEMSInverted(
@@ -448,4 +451,6 @@ msems_inverted = MSEMSInverted(
         "Bin_Conc59": "Float64",
         "Bin_Conc60": "Float64",
     },
-    export_order=720)
+    export_order=720,
+    cols_export=[],
+    cols_housekeeping=[])

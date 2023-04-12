@@ -24,6 +24,14 @@ CSV_HEADER = "SBI,DateTime,PartCon,CO2,P_baro,TEMPbox,mFlow,TEMPsamp,RHsamp,TEMP
 
 
 class FlightComputer(Instrument):
+    def __init__(
+        self,
+        *args,
+        **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.name = 'flight_computer'
+
     def file_identifier(
         self,
         first_lines_of_csv
@@ -198,8 +206,10 @@ flight_computer = FlightComputer(
     },
     na_values=["NA", "-9999.00"],
     comment="#",
-    # cols_housekeeping=["TEMPbox", "vBat", "P_baro"],
-    cols_export=["P_baro", "CO2", "TEMP1", "TEMP2",
+    cols_export=["Altitude", "P_baro", "CO2", "TEMP1", "TEMP2",
                  "TEMPsamp", "RH1", "RH2", "RHsamp", "mFlow"],
+    cols_housekeeping=['Altitude', 'SBI', 'PartCon', 'CO2', 'P_baro', 'TEMPbox',
+                       'mFlow', 'TEMPsamp', 'RHsamp', 'TEMP1', 'RH1', 'TEMP2',
+                       'RH2', 'vBat'],
     export_order=100,
     pressure_variable='P_baro')

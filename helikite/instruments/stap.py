@@ -14,6 +14,14 @@ import pandas as pd
 
 
 class STAP(Instrument):
+    def __init__(
+        self,
+        *args,
+        **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.name = 'stap'
+
     def file_identifier(
         self,
         first_lines_of_csv
@@ -55,4 +63,10 @@ stap = STAP(
     },
     na_values=["NAN"],
     export_order=500,
+    cols_export=["sample_press_mbar", "sample_temp_C", "sigmab",
+                 "sigmag", "sigmar", "sigmab_smth", "sigmag_smth",
+                 "sigmar_smth"],
+    cols_housekeeping=["sample_press_mbar", "sample_temp_C", "sigmab",
+                       "sigmag", "sigmar", "sigmab_smth", "sigmag_smth",
+                       "sigmar_smth"],
     pressure_variable='sample_press_mbar')

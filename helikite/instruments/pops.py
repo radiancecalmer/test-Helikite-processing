@@ -22,6 +22,14 @@ from plotly.graph_objects import Figure
 
 
 class POPS(Instrument):
+    def __init__(
+        self,
+        *args,
+        **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.name = 'pops'
+
     def file_identifier(
         self,
         first_lines_of_csv
@@ -133,4 +141,14 @@ pops = POPS(
         "b15": "Int64",
         },
         export_order=400,
+        cols_export=["P", "PartCon_186", "POPS_Flow", "b0",
+                     "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8",
+                     "b9", "b10", "b11", "b12", "b13", "b14", "b15"],
+        cols_housekeeping=[
+            "Status", "PartCt", "PartCon_186", "BL", "BLTH", "STD", "P", "TofP",
+            "POPS_Flow", "PumpFB", "LDTemp", "LaserFB", "LD_Mon", "Temp",
+            "BatV", "Laser_Current", "Flow_Set", "PumpLife_hrs", "BL_Start",
+            "TH_Mult", "nbins", "logmin", "logmax", "Skip_Save", "MinPeakPts",
+            "MaxPeakPts", "RawPts", "b0", "b1", "b2", "b3", "b4", "b5", "b6",
+            "b7", "b8", "b9", "b10", "b11", "b12", "b13", "b14", "b15"],
         pressure_variable='P')

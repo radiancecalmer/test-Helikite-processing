@@ -45,7 +45,7 @@ class Instrument:
         self.date: datetime | None = None
         self.pressure_offset_housekeeping: float | None = None
         self.time_offset: Dict[str, int] = {}
-        logger.info("Hello")
+        self.name = None
 
 
     def add_yaml_config(self, yaml_props: Dict[str, Any]):
@@ -96,41 +96,44 @@ class Instrument:
 
         return None
 
-    def get_housekeeping_data(
-            self,
-            df,
-            pressure_housekeeping_var='housekeeping_pressure'
-        ) -> pd.DataFrame:
-        ''' Returns the dataframe of housekeeping variables
 
-        If there are no housekeeping variables, return the original dataframe
+    def add_device_name_to_columns(
+        self,
+        df: pd.DataFrame
+    ) -> pd.DataFrame:
+        ''' Updates dataframe with column names prefixed by instrument name '''
+
+        df.columns = f"{self.name}_" + df.columns.values
+
+        return df
+
+
+    @property
+    def housekeeping_columns(self) -> List[str]:
+        ''' Returns housekeeping columns, prefixed with the instrument name
+
+        If there are no housekeeping variables, return an empty list
         '''
 
         if self.cols_housekeeping:
-            logger.debug(f"Columns for housekeeping: "
-                         f"{', '.join(self.cols_housekeeping)}")
-            return df.copy()[self.cols_housekeeping]
+            return [f"{self.name}_{x}" for x in self.cols_housekeeping]
         else:
-            logger.debug(f"Columns for housekeeping: "
-                         f"{', '.join(list(df.columns))}")
-            return df.copy()
+            return []
 
 
-    def get_export_data(self, df) -> pd.DataFrame:
-        ''' Returns the dataframe of only the columns to export
+    @property
+    def export_columns(self) -> List[str]:
+        ''' Returns export datafile columns, prefixed with the instrument name
 
-        If there are no columns set in the Instrument class, the default
-        behaviour is to return the dataframe with all of the columns
+        If there are no variables, return an empty list
+
+        The export data file is a combined output, similar to housekeeping
         '''
 
-
-
         if self.cols_export:
-            logger.debug(f"Columns for export: {', '.join(self.cols_export)}")
-            return df.copy()[self.cols_export]
+            return [f"{self.name}_{x}" for x in self.cols_export]
         else:
-            logger.debug(f"Columns for export: {', '.join(list(df.columns))}")
-            return df.copy()
+            return []
 
 
     def set_time_as_index(
@@ -187,7 +190,8 @@ class Instrument:
                 # If no offset, but a pressure var exists add column of same val
                 df[column_name] = df[self.pressure_variable]
             else:
-                df[column_name] = df[self.pressure_variable] + self.pressure_offset_housekeeping
+                df[column_name] = (df[self.pressure_variable]
+                                   + self.pressure_offset_housekeeping)
 
         return df
 

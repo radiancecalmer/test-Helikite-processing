@@ -1,12 +1,18 @@
 '''
-7) Pico -> Pico100217_220204_152813Eng.txt / Pico100217_220219_123139Eng.txt (doesn't have pressure)
+7) Pico -> Pico100217_220204_152813Eng.txt / Pico100217_220219_123139Eng.txt
+(doesn't have pressure)
 
 Gas monitor measuring CO, N2O and H2O
 
-Can operate in two different modes. When it opeartes in differentioal mode, there an additional variable called Differential.CO and should be used for the CO reading.
-In manual mode, look at CO_ppm (however, in this case, the baseline need to be substracted but this might require some more conversation on how to do it.)
+Can operate in two different modes. When it opeartes in differentioal mode,
+there an additional variable called Differential.CO and should be used for the
+CO reading.
 
-For quality check -> plot the following variables: win1Fit7 and win1Fit8 (if win1Fit8 has a sudden jump (very noticeable) this indicates a bad fit)
+In manual mode, look at CO_ppm (however, in this case, the baseline need to be
+substracted but this might require some more conversation on how to do it.)
+
+For quality check -> plot the following variables: win1Fit7 and win1Fit8
+(if win1Fit8 has a sudden jump (very noticeable) this indicates a bad fit)
 '''
 
 from .base import Instrument
@@ -17,12 +23,23 @@ from plotly.graph_objects import Figure
 
 
 class Pico(Instrument):
+    def __init__(
+        self,
+        *args,
+        **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.name = 'pico'
+
     def file_identifier(
         self,
         first_lines_of_csv
     ) -> bool:
         ## Change to be more adaptive (the following is always included)
-        if "win0Fit0,win0Fit1,win0Fit2,win0Fit3,win0Fit4,win0Fit5,win0Fit6,win0Fit7,win0Fit8,win0Fit9,win1Fit0,win1Fit1,win1Fit2" in first_lines_of_csv[0]:
+        if (
+            "win0Fit0,win0Fit1,win0Fit2,win0Fit3,win0Fit4,win0Fit5,win0Fit6," \
+            "win0Fit7,win0Fit8,win0Fit9,win1Fit0,win1Fit1,win1Fit2"
+        ) in first_lines_of_csv[0]:
             return True
 
     def data_corrections(
@@ -36,6 +53,9 @@ class Pico(Instrument):
 
         # Round the milliseconds to the nearest second
         df['DateTime'] = pd.to_datetime(df.DateTime).round('s')
+
+        ## Must adjust CO for Differential CO (no example)
+
 
         return df
 
@@ -101,4 +121,18 @@ pico = Pico(
         "Battery T (degC)": "Float64",
         "FET T (degC)": "Float64",
         },
-        export_order=300)
+        export_order=300,
+        cols_export=["CO (ppm)", "N2O (ppm)", "H2O (ppm)"],
+        cols_housekeeping=[
+            "Time Stamp", "Inlet Number", "P (mbars)", "T0 (degC)",
+            "T5 (degC)", "Tgas(degC)", "Laser PID Readout",
+            "Det PID Readout", "win0Fit0", "win0Fit1", "win0Fit2",
+            "win0Fit3", "win0Fit4", "win0Fit5", "win0Fit6",
+            "win0Fit7", "win0Fit8", "win0Fit9", "win1Fit0",
+            "win1Fit1", "win1Fit2", "win1Fit3", "win1Fit4",
+            "win1Fit5", "win1Fit6", "win1Fit7", "win1Fit8",
+            "win1Fit9", "Det Bkgd", "Ramp Ampl", "N2O (ppm)",
+            "H2O (ppm)", "CO (ppm)", "Battery Charge (V)",
+            "Power Input (mV)", "Current (mA)", "SOC (%)",
+            "Battery T (degC)", "FET T (degC)"]
+        )

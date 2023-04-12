@@ -24,6 +24,14 @@ logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
 
 class SmartTether(Instrument):
+    def __init__(
+        self,
+        *args,
+        **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.name = 'smart_tether'
+
     def date_extractor(
         self,
         first_lines_of_csv
@@ -97,4 +105,10 @@ smart_tether = SmartTether(
     },
     header=2,
     export_order=600,
+    cols_export=["Comment", "P (mbar)", "T (deg C)", "%RH", "Wind (degrees)",
+                 "Wind (m/s)", "UTC Time", "Latitude (deg)", "Longitude (deg)"],
+    cols_housekeeping=["Comment", "Module ID", "Alt (m)", "P (mbar)",
+                       "T (deg C)", "%RH", "Wind (degrees)", "Wind (m/s)",
+                       "Supply (V)", "UTC Time", "Latitude (deg)",
+                       "Longitude (deg)", "Course (deg)", "Speed (m/s)"],
     pressure_variable='P (mbar)')
