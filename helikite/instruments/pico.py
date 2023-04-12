@@ -44,7 +44,8 @@ class Pico(Instrument):
 
     def data_corrections(
         self,
-        df: pd.DataFrame
+        df: pd.DataFrame,
+        **kwargs
     ) -> pd.DataFrame:
 
         df['DateTime'] = pd.to_datetime(df['Time Stamp'],

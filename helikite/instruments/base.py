@@ -60,7 +60,7 @@ class Instrument:
         self.pressure_offset_housekeeping = yaml_props['pressure_offset']
 
 
-    def data_corrections(self, df):
+    def data_corrections(self, df, *args, **kwargs):
         ''' Default callback function for data corrections.
 
         Return with no changes

@@ -41,7 +41,9 @@ class FlightComputer(Instrument):
 
     def data_corrections(
         self,
-        df: pd.DataFrame
+        df: pd.DataFrame,
+        *,
+        start_altitude: float = 0
     ) -> pd.DataFrame:
 
         # Create altitude column by using average of first 10 seconds of data
@@ -55,7 +57,7 @@ class FlightComputer(Instrument):
             pressure_to_altitude,
             pressure_at_start=average_first_10s[self.pressure_variable],
             temperature_at_start=average_first_10s.TEMP1,
-            altitude_at_start=0
+            altitude_at_start=start_altitude
         )
 
         return df

@@ -38,7 +38,8 @@ class OzoneMonitor(Instrument):
 
     def data_corrections(
         self,
-        df: pd.DataFrame
+        df: pd.DataFrame,
+        **kwargs
     ) -> pd.DataFrame:
 
 

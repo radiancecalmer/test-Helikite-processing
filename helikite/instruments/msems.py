@@ -33,7 +33,7 @@ class MSEMSInverted(Instrument):
         super().__init__(*args, **kwargs)
         self.name = 'msems_inverted'
 
-    def data_corrections(self, df):
+    def data_corrections(self, df, **kwargs):
         ''' Create new columns to plot bins  '''
         bins = df.groupby('NumBins').all().index.to_list()
         if len(bins) != 1:

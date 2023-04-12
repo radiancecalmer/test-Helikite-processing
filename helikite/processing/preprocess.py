@@ -32,9 +32,9 @@ def preprocess():
     )
 
     # Hold a list of the loaded instrument objects
-    instruments = {}
+    instrument_objects = {}
     for instrument, props in yaml_config['instruments'].items():
-        instruments[instrument] = getattr(config.instrument, props['config'])
+        instrument_objects[instrument] = getattr(instruments, props['config'])
 
 
     for filename in os.listdir(constants.INPUTS_FOLDER):
@@ -43,7 +43,7 @@ def preprocess():
             continue
 
         full_path = os.path.join(constants.INPUTS_FOLDER, filename)
-        logger.info(f"Determining instrument for {filename:40} ... ", end='')
+        logger.info(f"Determining instrument for {filename:40} ... ")
 
         # Hold a list of name matches as to not match more than once for safeguard
         successful_matches = []
@@ -52,10 +52,10 @@ def preprocess():
         with open(full_path) as in_file:
             # Read the first set of lines for headers
             header_lines = [next(in_file) for x in range(50)]
-            for name, obj in instruments.items():
+            for name, obj in instrument_objects.items():
                 if obj.file_identifier(header_lines):
                     # Increment count of matches and also add match to list
-                    logger.info("Instrument:", name)
+                    logger.info(f"Instrument: {name}")
                     if instrument_match_count > 0:
                         raise ValueError(
                             f"Filename: {full_path} matched too many "
@@ -83,7 +83,7 @@ def preprocess():
                     props['date'] = obj.date_extractor(header_lines)
 
             if instrument_match_count == 0:
-                logger.warning("Not instrument found !!")
+                logger.warning("No instrument found !!")
 
     # Write out the updated yaml configuration
     print_preprocess_stats(yaml_config)
@@ -100,9 +100,9 @@ def print_preprocess_stats(yaml_config):
         else:
             found.append(instrument)
 
-    logger.info("\nFile preprocessing statistics:")
+    logger.info("File preprocessing statistics:")
     logger.info(f"Missing: {len(not_found)}: {', '.join(not_found)}")
-    logger.info(f"Found:   {len(found)}: {', '.join(found)}\n")
+    logger.info(f"Found:   {len(found)}: {', '.join(found)}")
 
 def export_yaml_config(yaml_config, out_location=constants.CONFIG_FILE):
     logger.info(f"Writing YAML config to {out_location}")
@@ -131,19 +131,20 @@ def generate_config(
     logger.info("Creating config YAML file...\n")
 
     # Go through each instrument in the __init__ of config.instrument
-    instruments = config.instrument.__dict__.items()
+    instrument_objects = instruments.__dict__.items()
     yaml_config: Dict[str, Any] = {}
     yaml_config['instruments'] = {}
     yaml_config['global'] = {
         'time_trim': {
             'start': None,
             'end': None,
-        }
+        },
+        'altitude': 0
     }
 
-    for instrument, obj in instruments:
+    for instrument, obj in instrument_objects:
         # If the imported object is actually an Instrument, then proceed
-        if isinstance(obj, config.instrument.base.Instrument):
+        if isinstance(obj, instruments.base.Instrument):
             yaml_config['instruments'][instrument] = {
                 'config': instrument,
                 'file': None,

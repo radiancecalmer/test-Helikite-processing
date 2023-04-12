@@ -55,6 +55,8 @@ def main():
     time_trim_start = pd.to_datetime(yaml_config['global']['time_trim']['start'])
     time_trim_end = pd.to_datetime(yaml_config['global']['time_trim']['end'])
 
+    start_altitude = yaml_config['global']['altitude']
+
     # Go through each instrument and perform the operations on each instrument
     for instrument, props in yaml_config['instruments'].items():
 
@@ -78,7 +80,7 @@ def main():
         )
 
         # Apply any corrections on the data
-        df = instrument_obj.data_corrections(df)
+        df = instrument_obj.data_corrections(df, start_altitude=start_altitude)
 
         # Create housekeeping pressure variable to help align pressure visually
         df = instrument_obj.set_housekeeping_pressure_offset_variable(
@@ -143,31 +145,82 @@ def main():
     normalized_index = (master_df.index - master_df.index.min()) / (master_df.index.max() - master_df.index.min())
     colors = [color_scale[int(x * (len(color_scale)-1))] for x in normalized_index]
 
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=master_df.index,
+            y=master_df["flight_computer_Altitude"],
+            name="smart_tether_Wind",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=3,
+                showscale=False),
+        )
+    )
+
+    # Update background to white and add black border
+    fig.update_layout(
+        title="Altitude",
+        xaxis=dict(
+            title="Time",
+            mirror=True,
+            showline=True,
+            linecolor='black',
+            linewidth=2
+        ),
+        yaxis=(dict(
+            title="Altitude (m)",
+            mirror=True,
+            showline=True,
+            linecolor='black',
+            linewidth=2
+        )),
+        height=600,
+        template="plotly_white",)
+    # fig.update_xaxes()
+    fig.update_yaxes(mirror=True)
+    figures.append(fig)
+
     fig = make_subplots(rows=2, cols=4, shared_yaxes=False)
 
     fig.add_trace(go.Scatter(
         x=master_df["flight_computer_TEMP1"],
         y=master_df["flight_computer_Altitude"],
-        name="flight_computer_TEMP1",
+        name="Temperature1 (Flight Computer)",
         mode="markers",
         marker=dict(
             color=colors,
-            size=3,
-            showscale=False
+            size=5,
+            showscale=False,
+            symbol="circle"
         )),
         row=1, col=1)
     fig.add_trace(go.Scatter(
         x=master_df["flight_computer_TEMP2"],
         y=master_df["flight_computer_Altitude"],
-        name="flight_computer_TEMP2",
+        name="Temperature2 (Flight Computer)",
         mode="markers",
         marker=dict(
             color=colors,
-            size=3,
-            showscale=False
+            size=5,
+            showscale=False,
+            symbol="cross"
         )),
         row=1, col=1)
 
+    fig.add_trace(go.Scatter(
+        x=master_df["smart_tether_T (deg C)"],
+        y=master_df["flight_computer_Altitude"],
+        name="Temperature (Smart Tether)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=5,
+            showscale=False,
+            symbol="diamond"
+        )),
+        row=1, col=1)
     fig.add_trace(go.Scatter(
         x=master_df["flight_computer_RH1"],
         y=master_df["flight_computer_Altitude"],
@@ -228,14 +281,28 @@ def main():
         )),
         row=2, col=1)
 
+    # Give each plot a border and white background
+    for row in [1, 2]:
+        for col in [1, 2, 3, 4]:
+            fig.update_yaxes(
+                row=row, col=col,
+                mirror=True, showline=True, linecolor='black', linewidth=2)
+            fig.update_xaxes(
+                row=row, col=col,
+                mirror=True, showline=True, linecolor='black', linewidth=2)
+
     fig.update_yaxes(title_text="Altitude (m)", row=1, col=1)
     fig.update_xaxes(title_text="Temperature (°C)", row=1, col=1)
     fig.update_xaxes(title_text="Relative Humidity (%)", row=1, col=2)
     fig.update_xaxes(title_text="Wind Speed (m/s)", row=1, col=3)
     fig.update_xaxes(title_text="Wind Direction (degrees)", row=1, col=4)
-    fig.update_layout(coloraxis=dict(colorbar=dict(orientation='h', y=-0.15)))
+    fig.update_layout(coloraxis=dict(colorbar=dict(orientation='h', y=-0.15)),
+                      template="plotly_white",)
 
     figures.append(fig)
+
+
+
     # Housekeeping pressure vars
     figures.append(
         plots.plot_scatter_from_variable_list_by_index(
