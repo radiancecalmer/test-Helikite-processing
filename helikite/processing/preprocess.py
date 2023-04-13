@@ -154,7 +154,7 @@ def generate_config(
                 'zmid': None,
             },
         },
-        'averaged_bin_concentrations_readings': []
+        'msems_readings_averaged': None
     }
 
     for instrument, obj in instrument_objects:

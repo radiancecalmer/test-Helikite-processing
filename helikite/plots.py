@@ -423,6 +423,9 @@ def generate_average_bin_concentration_plot(
     fig.update_layout(**constants.PLOT_LAYOUT_COMMON,
                       title=f"{title}: ({timestamp_start} to {timestamp_end})")
 
+    fig.update_xaxes(title_text="Bin size")
+    fig.update_xaxes(title_text="Particle concentration")
+
     return fig
 
 
