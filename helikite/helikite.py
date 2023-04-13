@@ -58,6 +58,7 @@ def main():
 
     start_altitude = yaml_config['global']['altitude']
 
+    plot_props = yaml_config['plots']
     # Go through each instrument and perform the operations on each instrument
     for instrument, props in yaml_config['instruments'].items():
 
@@ -141,51 +142,10 @@ def main():
                      constants.HOUSEKEEPING_CSV_FILENAME))
 
     # Plots
-    color_scale = px.colors.sequential.Rainbow
-    normalized_index = (master_df.index - master_df.index.min()) / (master_df.index.max() - master_df.index.min())
-    colors = [color_scale[int(x * (len(color_scale)-1))] for x in normalized_index]
-
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=master_df.index,
-            y=master_df["flight_computer_Altitude"],
-            name="smart_tether_Wind",
-            mode="markers",
-            marker=dict(
-                color=colors,
-                size=6,
-                showscale=False),
-        )
-    )
-
-    # Update background to white and add black border
-    fig.update_layout(
-        title="Altitude",
-        xaxis=dict(
-            title="Time",
-            mirror=True,
-            showline=True,
-            linecolor='black',
-            linewidth=2
-        ),
-        yaxis=(dict(
-            title="Altitude (m)",
-            mirror=True,
-            showline=True,
-            linecolor='black',
-            linewidth=2
-        )),
-        height=400,
-        template="plotly_white",)
-    # fig.update_xaxes()
-    fig.update_yaxes(mirror=True)
-    figures_quicklook.append(fig)
-
-
+    figures_quicklook.append(plots.generate_altitude_plot(master_df))
     figures_quicklook.append(plots.generate_grid_plot(master_df))
 
-    # Housekeeping pressure vars
+    # Housekeeping pressure vars as qualitychecks
     figures_qualitycheck.append(
         plots.plot_scatter_from_variable_list_by_index(
             master_df, "Housekeeping pressure variables",
@@ -200,7 +160,7 @@ def main():
         )
     )
 
-    # Pressure vars
+    # Same with just pressure vars
     figures_qualitycheck.append(
         plots.plot_scatter_from_variable_list_by_index(
             master_df, "Pressure variables",
@@ -215,8 +175,36 @@ def main():
         )
     )
 
-    for figure in plots.generate_particle_heatmap(master_df):
+    # Generate plots for qualitychecks based on their variable name in the
+    # merged dataframe. The two parameter Tuple[List[str], str] represents the
+    # list of variables, and the title given to the plot in the second parameter
+    for variables, instrument in [
+        (["flight_computer_vBat","flight_computer_TEMPbox"], "Flight Computer"),
+        (["flight_computer_TEMP1", "flight_computer_TEMP2",
+          "smart_tether_T (deg C)"], "Smart Tether"),
+        (["pops_POPS_Flow"], "POPS"),
+        (["msems_readings_msems_errs", "msems_readings_mcpc_errs"],
+         "MSEMS Readings"),
+    ]:
+        figures_qualitycheck.append(
+            plots.plot_scatter_from_variable_list_by_index(
+                master_df, instrument, variables,
+            )
+        )
+
+    heatmaps = plots.generate_particle_heatmap(
+        master_df,
+        plot_props['heatmap']['msems_inverted'],
+        plot_props['heatmap']['msems_scan'],)
+
+    for figure in heatmaps:
         figures_quicklook.append(figure)
+
+    if len(plot_props['msems_readings_averaged']):
+        for title, times in plot_props['msems_readings_averaged'].items():
+            fig = plots.generate_average_bin_concentration_plot(
+                master_df, title, times[0], times[1])
+            figures_quicklook.append(fig)
 
     # Save quicklook and qualitycheck plots to HTML files
     quicklook_filename = os.path.join(output_path_with_time,

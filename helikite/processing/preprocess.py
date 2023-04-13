@@ -141,6 +141,21 @@ def generate_config(
         },
         'altitude': 0
     }
+    yaml_config['plots'] = {
+        'heatmap': {
+            'msems_inverted': {
+                'zmin': None,
+                'zmax': None,
+                'zmid': None,
+            },
+            'msems_scan': {
+                'zmin': None,
+                'zmax': None,
+                'zmid': None,
+            },
+        },
+        'averaged_bin_concentrations_readings': []
+    }
 
     for instrument, obj in instrument_objects:
         # If the imported object is actually an Instrument, then proceed

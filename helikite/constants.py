@@ -19,11 +19,13 @@ class Constants(BaseSettings):
     QUICKLOOK_PLOT_FILENAME: str = "helikite-quicklooks.html"
     QUALITYCHECK_PLOT_FILENAME: str = "helikite-qualitycheck.html"
     PLOT_LAYOUT_COMMON: dict = {
-        'font': {'size': 12,
+        'font': {'size': 16,
                  'family': 'Arial',
         },
         'template': 'plotly_white',
+        'height': 600
     }
+    PLOT_MARKER_SIZE: int = 8
 
     # Logging
     LOGFORMAT_CONSOLE: logging.Formatter = logging.Formatter(
