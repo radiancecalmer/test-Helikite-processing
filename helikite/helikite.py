@@ -3,8 +3,8 @@ from processing import preprocess, sorting
 from constants import constants
 import instruments
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import plotly.express as px
 import os
 import datetime
@@ -31,7 +31,8 @@ def main():
                      constants.CONFIG_FILE))
 
     # List to add plots to that will end up being exported
-    figures = []
+    figures_quicklook = []
+    figures_qualitycheck = []
 
     # Create a folder with the current UTC time in outputs
     output_path_with_time = os.path.join(
@@ -88,7 +89,7 @@ def main():
         )
 
         # Generate the plots and add them to the list
-        figures = figures + instrument_obj.create_plots(df)
+        # figures = figures + instrument_obj.create_plots(df)
 
         # Save dataframe to outputs folder
         df.to_csv(
@@ -139,7 +140,6 @@ def main():
         os.path.join(output_path_with_time,
                      constants.HOUSEKEEPING_CSV_FILENAME))
 
-
     # Plots
     color_scale = px.colors.sequential.Rainbow
     normalized_index = (master_df.index - master_df.index.min()) / (master_df.index.max() - master_df.index.min())
@@ -154,7 +154,7 @@ def main():
             mode="markers",
             marker=dict(
                 color=colors,
-                size=3,
+                size=6,
                 showscale=False),
         )
     )
@@ -176,135 +176,17 @@ def main():
             linecolor='black',
             linewidth=2
         )),
-        height=600,
+        height=400,
         template="plotly_white",)
     # fig.update_xaxes()
     fig.update_yaxes(mirror=True)
-    figures.append(fig)
-
-    fig = make_subplots(rows=2, cols=4, shared_yaxes=False)
-
-    fig.add_trace(go.Scatter(
-        x=master_df["flight_computer_TEMP1"],
-        y=master_df["flight_computer_Altitude"],
-        name="Temperature1 (Flight Computer)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=5,
-            showscale=False,
-            symbol="circle"
-        )),
-        row=1, col=1)
-    fig.add_trace(go.Scatter(
-        x=master_df["flight_computer_TEMP2"],
-        y=master_df["flight_computer_Altitude"],
-        name="Temperature2 (Flight Computer)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=5,
-            showscale=False,
-            symbol="cross"
-        )),
-        row=1, col=1)
-
-    fig.add_trace(go.Scatter(
-        x=master_df["smart_tether_T (deg C)"],
-        y=master_df["flight_computer_Altitude"],
-        name="Temperature (Smart Tether)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=5,
-            showscale=False,
-            symbol="diamond"
-        )),
-        row=1, col=1)
-    fig.add_trace(go.Scatter(
-        x=master_df["flight_computer_RH1"],
-        y=master_df["flight_computer_Altitude"],
-        name="flight_computer_RH1",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=3,
-            showscale=False
-        )),
-        row=1, col=2).update_layout(xaxis_title="Relative Humidity (%)")
-
-    fig.add_trace(go.Scatter(
-        x=master_df["smart_tether_Wind (m/s)"],
-        y=master_df["flight_computer_Altitude"],
-        name="smart_tether_Wind",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=3,
-            showscale=False
-        )),
-        row=1, col=3)
-
-    fig.add_trace(go.Scatter(
-        x=master_df["smart_tether_Wind (degrees)"],
-        y=master_df["flight_computer_Altitude"],
-        name="smart_tether_Wind",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=3,
-            showscale=False
-        )),
-
-        row=1, col=4)
-    fig.add_trace(go.Scatter(
-        x=master_df["smart_tether_Wind (degrees)"],
-        y=master_df["flight_computer_Altitude"],
-        name="smart_tether_Wind",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=3,
-            showscale=False
-        )),
-        row=1, col=4)
-
-    fig.add_trace(go.Scatter(
-        x=master_df.index,
-        y=master_df["flight_computer_Altitude"],
-        name="smart_tether_Wind",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=3,
-            showscale=False
-        )),
-        row=2, col=1)
-
-    # Give each plot a border and white background
-    for row in [1, 2]:
-        for col in [1, 2, 3, 4]:
-            fig.update_yaxes(
-                row=row, col=col,
-                mirror=True, showline=True, linecolor='black', linewidth=2)
-            fig.update_xaxes(
-                row=row, col=col,
-                mirror=True, showline=True, linecolor='black', linewidth=2)
-
-    fig.update_yaxes(title_text="Altitude (m)", row=1, col=1)
-    fig.update_xaxes(title_text="Temperature (°C)", row=1, col=1)
-    fig.update_xaxes(title_text="Relative Humidity (%)", row=1, col=2)
-    fig.update_xaxes(title_text="Wind Speed (m/s)", row=1, col=3)
-    fig.update_xaxes(title_text="Wind Direction (degrees)", row=1, col=4)
-    fig.update_layout(coloraxis=dict(colorbar=dict(orientation='h', y=-0.15)),
-                      template="plotly_white",)
-
-    figures.append(fig)
+    figures_quicklook.append(fig)
 
 
+    figures_quicklook.append(plots.generate_grid_plot(master_df))
 
     # Housekeeping pressure vars
-    figures.append(
+    figures_qualitycheck.append(
         plots.plot_scatter_from_variable_list_by_index(
             master_df, "Housekeeping pressure variables",
             [
@@ -319,7 +201,7 @@ def main():
     )
 
     # Pressure vars
-    figures.append(
+    figures_qualitycheck.append(
         plots.plot_scatter_from_variable_list_by_index(
             master_df, "Pressure variables",
             [
@@ -332,27 +214,19 @@ def main():
             ],
         )
     )
-    import numpy as np
-    z = master_df[[f"msems_inverted_Bin_Conc{x}" for x in range(1, 60)]].dropna()
-    y = master_df[[f"msems_inverted_Bin_Lim{x}" for x in range(1, 60)]].dropna()
-    x = master_df[['msems_inverted_StartTime']].dropna()
-    fig = go.Figure(
-        data=go.Heatmap(
-        z=z.T,
-        x=x.index.values,
-        y=y.mean(), colorscale = 'Viridis',
-        #zmin=-200, zmid=1400, zmax=1400
-        ))
-    fig.update_yaxes(type='log',
-                    range=(np.log10(y.mean()[0]), np.log10(y.mean()[-1])),
-                    tickformat="f",
-                    nticks=4
-                    )
-    # fig.show()
-    figures.append(fig)
-    html_filename = os.path.join(output_path_with_time,
-                                 constants.HTML_OUTPUT_FILENAME)
-    plots.write_plots_to_html(figures, html_filename)
+
+    for figure in plots.generate_particle_heatmap(master_df):
+        figures_quicklook.append(figure)
+
+    # Save quicklook and qualitycheck plots to HTML files
+    quicklook_filename = os.path.join(output_path_with_time,
+                                      constants.QUICKLOOK_PLOT_FILENAME)
+    plots.write_plots_to_html(figures_quicklook, quicklook_filename)
+
+
+    qualitycheck_filename = os.path.join(output_path_with_time,
+                                         constants.QUALITYCHECK_PLOT_FILENAME)
+    plots.write_plots_to_html(figures_qualitycheck, qualitycheck_filename)
 
 if __name__ == '__main__':
     # If docker arg given, don't run main

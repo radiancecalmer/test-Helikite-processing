@@ -171,6 +171,9 @@ class MSEMSScan(Instrument):
             and "#scan_conf" in first_lines_of_csv[31]
         ):
             return True
+
+        return False
+
     def set_time_as_index(
         self,
         df: pd.DataFrame

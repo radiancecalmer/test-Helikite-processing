@@ -45,7 +45,7 @@ class Instrument:
         self.date: datetime | None = None
         self.pressure_offset_housekeeping: float | None = None
         self.time_offset: Dict[str, int] = {}
-        self.name = None
+        self.name: str | None = None
 
 
     def add_yaml_config(self, yaml_props: Dict[str, Any]):

@@ -1,8 +1,11 @@
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly.express as px
 import pandas as pd
 from typing import List
 import logging
 from constants import constants
+import numpy as np
 
 logger = logging.getLogger(__name__)
 logger.setLevel(constants.LOGLEVEL_CONSOLE)
@@ -17,13 +20,292 @@ def plot_scatter_from_variable_list_by_index(
     fig = go.Figure()
     for var in variables:
         fig.add_trace(
-            go.Scatter(
+            go.Scattergl(
                 x=df.index,
                 y=df[var],
                 name=var))
-    fig.update_layout(title=title)
+    fig.update_yaxes(mirror=True, showline=True, linecolor='black', linewidth=2)
+    fig.update_xaxes(mirror=True, showline=True, linecolor='black', linewidth=2)
+    fig.update_layout(**constants.PLOT_LAYOUT_COMMON,
+                      title=title)
 
     return fig
+
+
+
+def generate_grid_plot(
+    df: pd.DataFrame
+) -> go.Figure:
+
+    color_scale = px.colors.sequential.Rainbow
+    normalized_index = (df.index - df.index.min()) / (df.index.max() - df.index.min())
+    colors = [color_scale[int(x * (len(color_scale)-1))] for x in normalized_index]
+
+    fig = make_subplots(rows=2, cols=4, shared_yaxes=False)
+
+    fig.add_trace(go.Scattergl(
+        x=df["flight_computer_TEMP1"],
+        y=df["flight_computer_Altitude"],
+        name="Temperature1 (Flight Computer)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=6,
+            line_width=2,
+            showscale=False,
+            symbol="circle-open"
+        )),
+        row=1, col=1)
+    fig.add_trace(go.Scattergl(
+        x=df["flight_computer_TEMP2"],
+        y=df["flight_computer_Altitude"],
+        name="Temperature2 (Flight Computer)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=6,
+            line_width=2,
+            showscale=False,
+            symbol="x-open"
+        )),
+        row=1, col=1)
+
+    fig.add_trace(go.Scattergl(
+        x=df["smart_tether_T (deg C)"],
+        y=df["flight_computer_Altitude"],
+        name="Temperature (Smart Tether)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=6,
+            line_width=2,
+            showscale=False,
+            symbol="diamond-open"
+        )),
+        row=1, col=1)
+    fig.add_trace(go.Scattergl(
+        x=df["flight_computer_RH1"],
+        y=df["flight_computer_Altitude"],
+        name="Relative Humidity1 (Flight Computer)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=6,
+            showscale=False
+        )),
+        row=1, col=2)
+
+    fig.add_trace(go.Scattergl(
+        x=df["smart_tether_Wind (m/s)"],
+        y=df["flight_computer_Altitude"],
+        name="Wind speed (Smart Tether)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=6,
+            showscale=False
+        )),
+        row=1, col=3)
+
+    fig.add_trace(go.Scattergl(
+        x=df["smart_tether_Wind (degrees)"],
+        y=df["flight_computer_Altitude"],
+        name="Wind direction (Smart Tether)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=6,
+            showscale=False
+        )),
+
+        row=1, col=4)
+
+    fig.add_trace(go.Scattergl(
+        x=df["flight_computer_TEMP1"],
+        y=df["flight_computer_Altitude"],
+        name="Temperature1 (Flight Computer)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=6,
+            line_width=2,
+            showscale=False,
+            symbol="circle-open"
+        )),
+        row=2, col=1)
+
+    fig.add_trace(go.Scattergl(
+        x=df["flight_computer_TEMP2"],
+        y=df["flight_computer_Altitude"],
+        name="Temperature2 (Flight Computer)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=6,
+            line_width=2,
+            showscale=False,
+            symbol="x-open"
+        )),
+        row=2, col=1)
+
+    fig.add_trace(go.Scattergl(
+        x=df["smart_tether_T (deg C)"],
+        y=df["flight_computer_Altitude"],
+        name="Temperature (Smart Tether)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=6,
+            line_width=2,
+            showscale=False,
+            symbol="diamond-open"
+        )),
+        row=2, col=1)
+
+    fig.add_trace(go.Scattergl(
+        x=df['pops_PartCon_186'],
+        y=df["flight_computer_Altitude"],
+        name="PartCon_186 (POPS)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=6,
+            showscale=False
+        )),
+        row=2, col=2)
+
+    fig.add_trace(go.Scattergl(
+        x=df['flight_computer_CO2'],
+        y=df["flight_computer_Altitude"],
+        name="CO2 (Flight Computer)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=6,
+            showscale=False
+        )),
+        row=2, col=3)
+
+    fig.add_trace(go.Scattergl(
+        x=df['stap_sigmab_smth'],
+        y=df["flight_computer_Altitude"],
+        name="sigmab_smth (STAP)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=6,
+            line_width=2,
+            showscale=False,
+            symbol="circle-open"
+        )),
+        row=2, col=4)
+
+    fig.add_trace(go.Scattergl(
+        x=df['stap_sigmag_smth'],
+        y=df["flight_computer_Altitude"],
+        name="sigmag_smth (STAP)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=6,
+            line_width=2,
+            showscale=False,
+            symbol="x-open"
+        )),
+        row=2, col=4)
+
+    fig.add_trace(go.Scattergl(
+        x=df['stap_sigmar_smth'],
+        y=df["flight_computer_Altitude"],
+        name="sigmar_smth (STAP)",
+        mode="markers",
+        marker=dict(
+            color=colors,
+            size=6,
+            line_width=2,
+            showscale=False,
+            symbol="diamond-open"
+        )),
+        row=2, col=4)
+    # Give each plot a border and white background
+    for row in [1, 2]:
+        for col in [1, 2, 3, 4]:
+            fig.update_yaxes(
+                row=row, col=col,
+                mirror=True, showline=True, linecolor='black', linewidth=2)
+            fig.update_xaxes(
+                row=row, col=col,
+                mirror=True, showline=True, linecolor='black', linewidth=2)
+
+    fig.update_yaxes(title_text="Altitude (m)", row=1, col=1)
+    fig.update_xaxes(title_text="Temperature (°C)", row=1, col=1)
+    fig.update_xaxes(title_text="Relative Humidity (%)", row=1, col=2)
+    fig.update_xaxes(title_text="Wind Speed (m/s)", row=1, col=3)
+    fig.update_xaxes(title_text="Wind Direction (degrees)", row=1, col=4)
+    fig.update_xaxes(title_text="Temperature (°C)", row=2, col=1)
+    fig.update_xaxes(title_text="Particle Concentration 186", row=2, col=2)
+    fig.update_xaxes(title_text="CO2", row=2, col=3)
+    fig.update_xaxes(title_text="STAP", row=2, col=4)
+    fig.update_layout(**constants.PLOT_LAYOUT_COMMON,
+                      coloraxis=dict(colorbar=dict(orientation='h', y=-0.15)),
+                      )
+
+    return fig
+
+
+def generate_particle_heatmap(
+    df: pd.DataFrame
+) -> go.Figure:
+    figlist = []
+    z = df[[f"msems_inverted_Bin_Conc{x}" for x in range(1, 60)]].dropna()
+    y = df[[f"msems_inverted_Bin_Lim{x}" for x in range(1, 60)]].dropna()
+    x = df[['msems_inverted_StartTime']].dropna()
+    fig = go.Figure(
+        data=go.Heatmap(
+        z=z.T,
+        x=x.index.values,
+        y=y.mean(), colorscale = 'Viridis',
+        #zmin=-200, zmid=1400, zmax=1400
+        ))
+    fig.update_yaxes(type='log',
+                    range=(np.log10(y.mean()[0]), np.log10(y.mean()[-1])),
+                    tickformat="f",
+                    nticks=4
+                    )
+    fig.update_layout(**constants.PLOT_LAYOUT_COMMON,
+                      title=f"Bin concentrations (msems_inverted)",
+                      height=600)
+
+    fig.update_yaxes(title_text="D<sub>p</sub> [nm]")
+    fig.update_xaxes(title_text="Time")
+    figlist.append(fig)
+
+    z = df[[f"msems_scan_bin{x}" for x in range(1, 60)]].dropna()
+    y = df[[f"msems_inverted_Bin_Lim{x}" for x in range(1, 60)]].dropna()
+    x = df[['msems_inverted_StartTime']].dropna()
+
+    fig = go.Figure(
+        data=go.Heatmap(
+        z=z.T,
+        x=x.index.values,
+        y=y.mean(), colorscale = 'Viridis',
+        #zmin=-200, zmid=1400, zmax=1400
+        ))
+    fig.update_yaxes(type='log',
+                    range=(np.log10(y.mean()[0]), np.log10(y.mean()[-1])),
+                    tickformat="f",
+                    nticks=4
+                    )
+    fig.update_layout(**constants.PLOT_LAYOUT_COMMON,
+                      title=f"Bin readings (msems_scan)",
+                      height=600)
+
+    fig.update_yaxes(title_text="D<sub>p</sub> [nm]")
+    fig.update_xaxes(title_text="Time")
+
+    figlist.append(fig)
+
+    return figlist
 
 def write_plots_to_html(
     figures: List[go.Figure],
