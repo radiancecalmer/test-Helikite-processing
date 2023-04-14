@@ -346,6 +346,8 @@ def generate_particle_heatmap(
 
     fig.update_yaxes(title_text="D<sub>p</sub> [nm]")
     fig.update_xaxes(title_text="Time")
+    fig.update_layout(height=600)
+
     figlist.append(fig)
 
     z = df[[f"msems_scan_bin{x}" for x in range(1, 60)]].dropna()
@@ -369,6 +371,7 @@ def generate_particle_heatmap(
 
     fig.update_yaxes(title_text="D<sub>p</sub> [nm]")
     fig.update_xaxes(title_text="Time")
+    fig.update_layout(height=600)
 
     figlist.append(fig)
 
@@ -422,9 +425,9 @@ def generate_average_bin_concentration_plot(
             y=y.to_numpy().flatten()))
     fig.update_layout(**constants.PLOT_LAYOUT_COMMON,
                       title=f"{title}: ({timestamp_start} to {timestamp_end})")
-
+    fig.update_layout(height=600)
     fig.update_xaxes(title_text="Bin size")
-    fig.update_xaxes(title_text="Particle concentration")
+    fig.update_yaxes(title_text="Particle concentration")
 
     return fig
 
