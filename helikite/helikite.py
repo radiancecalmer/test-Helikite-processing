@@ -200,7 +200,7 @@ def main():
     for figure in heatmaps:
         figures_quicklook.append(figure)
 
-    if len(plot_props['msems_readings_averaged']):
+    if plot_props['msems_readings_averaged'] is not None and len(plot_props['msems_readings_averaged']):
         for title, times in plot_props['msems_readings_averaged'].items():
             fig = plots.generate_average_bin_concentration_plot(
                 master_df, title, times[0], times[1])
