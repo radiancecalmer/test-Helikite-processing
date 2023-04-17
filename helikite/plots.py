@@ -500,8 +500,8 @@ def generate_normalised_colours(
         (df.index - df.index.min())
         / (df.index.max() - df.index.min())
     )
-    colors = [color_scale[int(x * (len(color_scale)-1))]
-              for x in normalized_index]
+    colors = [color_scale[int(x * (len(color_scale)-1))] if not np.isnan(x) else (0, 0, 0) for x in normalized_index]
+
 
 
     return colors

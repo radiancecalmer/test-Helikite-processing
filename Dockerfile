@@ -1,4 +1,4 @@
-FROM python:3.10-slim-buster
+FROM python:3.10.10-slim-buster
 
 ARG POETRY_VERSION=1.4.0
 
