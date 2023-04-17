@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "helikite-data-processing"
+version = "0.1.0"
+description = "Library to generate quicklooks and data quality checks on Helikite campaigns"
+authors = ["Evan Thomas <evan.thomas@epfl.ch>"]
+readme = "README.md"
+packages = [{include = "helikite"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+pandas = "^1.5.3"
+pydantic = "^1.10.5"
+plotly = "^5.13.1"
+pyyaml = "^6.0"
+scipy = "^1.10.1"
+matplotlib = "^3.7.1"
+
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.0.0"
+mypy = "^1.1.1"
+pytest = "^7.2.2"
+pytest-watch = "^4.2.0"
+pytest-cov = "^4.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
