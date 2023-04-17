@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Library to generate quicklooks and data quality checks on Helikite campaigns"
 authors = ["Evan Thomas <evan.thomas@epfl.ch>"]
 readme = "README.md"
-packages = [{include = "helikite_data_processing"}]
+packages = [{include = "helikite"}]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.12"

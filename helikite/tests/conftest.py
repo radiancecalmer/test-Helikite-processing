@@ -29,7 +29,9 @@ def fc_data(campaign_data_location: str):
 def st_data():
     # Set date that would usually happen in the config file/preprocess step
     smart_tether.date = datetime.datetime.strptime("9/29/2022", "%m/%d/%Y")
-    smart_tether.filename = "./tests/resources/smart_tether_during_midnight.csv"
+    smart_tether.filename = os.path.join(
+        os.path.dirname(__file__), "resources",
+        "smart_tether_during_midnight.csv")
 
     df = smart_tether.read_data()
 
