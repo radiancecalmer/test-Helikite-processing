@@ -319,15 +319,52 @@ def generate_grid_plot(
 
     return fig
 
+def reduce_column_to_single_unique_value(
+    df: pd.DataFrame,
+    col: str
+) -> Any:
+    """Reduce a column to a single value, if possible.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Dataframe to reduce.
+    col : str
+        Column to reduce.
+
+    Returns
+    -------
+    Any
+        Single value if possible, else the original column.
+
+    Raises
+    ------
+    ValueError
+        If the column cannot be reduced to a single value.
+    """
+
+    # Get number of bins
+    values = df.groupby(col).all().index.to_list()
+    if len(values) == 1:
+        return values[0]
+    else:
+        raise ValueError(f"Unable to reduce column '{col}' to a single value. "
+                         f"All values: {values}")
+
 
 def generate_particle_heatmap(
     df: pd.DataFrame,
     props_msems_inverted: Dict[str, Any],
     props_msems_scan: Dict[str, Any],
 ) -> go.Figure:
+
     figlist = []
-    z = df[[f"msems_inverted_Bin_Conc{x}" for x in range(1, 60)]].dropna()
-    y = df[[f"msems_inverted_Bin_Lim{x}" for x in range(1, 60)]].dropna()
+
+    # Get number of bins
+    bins = reduce_column_to_single_unique_value(df, 'msems_inverted_NumBins')
+
+    z = df[[f"msems_inverted_Bin_Conc{x}" for x in range(1, bins)]].dropna()
+    y = df[[f"msems_inverted_Bin_Lim{x}" for x in range(1, bins)]].dropna()
     x = df[['msems_inverted_StartTime']].dropna()
     fig = go.Figure(
         data=go.Heatmap(
@@ -350,8 +387,8 @@ def generate_particle_heatmap(
 
     figlist.append(fig)
 
-    z = df[[f"msems_scan_bin{x}" for x in range(1, 60)]].dropna()
-    y = df[[f"msems_inverted_Bin_Lim{x}" for x in range(1, 60)]].dropna()
+    z = df[[f"msems_scan_bin{x}" for x in range(1, bins)]].dropna()
+    y = df[[f"msems_inverted_Bin_Lim{x}" for x in range(1, bins)]].dropna()
     x = df[['msems_inverted_StartTime']].dropna()
 
     fig = go.Figure(
@@ -407,13 +444,7 @@ def generate_average_bin_concentration_plot(
     df = df[timestamp_start:timestamp_end]
 
     # Get number of bins
-    df['msems_inverted_NumBins'].mean()
-    bins = df.groupby('msems_inverted_NumBins').all().index.to_list()
-    if len(bins) > 60:
-        raise ValueError("Unable to determine exact number of bins. "
-                         "There are various quantities for each row")
-    else:
-        bins = bins[0]
+    bins = reduce_column_to_single_unique_value(df, 'msems_inverted_NumBins')
 
     x = df[[f"msems_inverted_Bin_Lim{x}" for x in range(1, bins)]].mean(
         numeric_only=True)
