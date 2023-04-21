@@ -139,7 +139,11 @@ def generate_config(
             'start': None,
             'end': None,
         },
-        'altitude': 0
+    }
+    yaml_config['ground_station'] = {
+        'altitude': None,
+        'temperature': None,
+        'pressure': None
     }
     yaml_config['plots'] = {
         'heatmap': {

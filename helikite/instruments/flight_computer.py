@@ -18,7 +18,13 @@ import pandas as pd
 from processing.conversions import pressure_to_altitude
 from io import StringIO
 import csv
+import logging
+from constants import constants
 
+
+# Define logger for this file
+logger = logging.getLogger(__name__)
+logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
 CSV_HEADER = "SBI,DateTime,PartCon,CO2,P_baro,TEMPbox,mFlow,TEMPsamp,RHsamp,TEMP1,RH1,TEMP2,RH2,vBat\n"
 
@@ -43,21 +49,49 @@ class FlightComputer(Instrument):
         self,
         df: pd.DataFrame,
         *,
-        start_altitude: float = 0
+        start_altitude: float | None = None,
+        start_pressure: float | None = None,
+        start_temperature: float | None = None,
+        start_duration_seconds: int = 10,
+
     ) -> pd.DataFrame:
 
         # Create altitude column by using average of first 10 seconds of data
+        if start_pressure is None or start_temperature is None:
+            try:
+                first_period = df.loc[
+                    df.index[0]:df.index[0] + pd.Timedelta(
+                    seconds=start_duration_seconds)
+                ]
+                average_first_period = first_period.mean(numeric_only=True)
+            except IndexError as e:
+                logger.error(len(df))
+                logger.error(
+                    "There is not enough data in the flight computer to "
+                    f"measure the first {start_duration_seconds} seconds for "
+                    "pressure and temperature in order to calculate altitude. "
+                    "Data only available for time "
+                    f"range: {self.time_range[0]} to {self.time_range[1]}. "
+                    "To bypass this, input values for ground temperature and "
+                    "pressure in the config file."
+                )
+                raise e
 
-        first_10s = df.loc[
-            df.index[0]:df.index[0] + pd.Timedelta(seconds=10)
-        ]
-        average_first_10s = first_10s.mean(numeric_only=True)
+        logger.info(
+            f"Pressure at start calculated to: "
+            f"{average_first_period[self.pressure_variable]} "
+            f"(Flight Computer: {self.pressure_variable})"
+        )
+        logger.info(
+            f"Temperature at start calculated to: "
+            f"{average_first_period.TEMP1} (Flight Computer: TEMP1)"
+        )
 
         df['Altitude'] = df[self.pressure_variable].apply(
             pressure_to_altitude,
-            pressure_at_start=average_first_10s[self.pressure_variable],
-            temperature_at_start=average_first_10s.TEMP1,
-            altitude_at_start=start_altitude
+            pressure_at_start=average_first_period[self.pressure_variable],
+            temperature_at_start=average_first_period.TEMP1,
+            altitude_at_start=start_altitude if start_altitude else 0
         )
 
         return df

@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Optional, Union, Callable
+from typing import Dict, Any, List, Optional, Union, Callable, Tuple
 from pydantic import BaseModel
 from pandas import DataFrame
 from plotly.graph_objects import Figure
@@ -46,6 +46,7 @@ class Instrument:
         self.pressure_offset_housekeeping: float | None = None
         self.time_offset: Dict[str, int] = {}
         self.name: str | None = None
+        self.time_range: Tuple[str | pd.Timestamp] | None = None
 
 
     def add_yaml_config(self, yaml_props: Dict[str, Any]):
@@ -169,6 +170,9 @@ class Instrument:
                 seconds=self.time_offset['second'])
 
        # Trim the dataframes to the time range specified in the config
+        logger.debug(f"{self.name}: Original start time: {df.iloc[0].name} ")
+        logger.debug(f"{self.name}: Original end time: {df.iloc[-1].name} ")
+        self.time_range = (df.iloc[0].name, df.iloc[-1].name)
         df = df.loc[trim_start:trim_end]
 
         return df

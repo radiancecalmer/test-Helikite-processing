@@ -57,6 +57,7 @@ def main():
     time_trim_end = pd.to_datetime(yaml_config['global']['time_trim']['end'])
 
     start_altitude = yaml_config['global']['altitude']
+    ground_station = yaml_config['global']['ground_station']
 
     plot_props = yaml_config['plots']
     # Go through each instrument and perform the operations on each instrument
@@ -82,7 +83,12 @@ def main():
         )
 
         # Apply any corrections on the data
-        df = instrument_obj.data_corrections(df, start_altitude=start_altitude)
+        df = instrument_obj.data_corrections(
+            df,
+            start_altitude=ground_station['altitude'],
+            start_pressure=ground_station['pressure'],
+            start_temperature=ground_station['temperature'],
+            )
 
         # Create housekeeping pressure variable to help align pressure visually
         df = instrument_obj.set_housekeeping_pressure_offset_variable(
