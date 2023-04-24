@@ -173,7 +173,10 @@ class Instrument:
         logger.debug(f"{self.name}: Original start time: {df.iloc[0].name} ")
         logger.debug(f"{self.name}: Original end time: {df.iloc[-1].name} ")
         self.time_range = (df.iloc[0].name, df.iloc[-1].name)
-        df = df.loc[trim_start:trim_end]
+
+        datemask = (df.index > trim_start) & (df.index <= trim_end)
+        df = df[datemask]
+        # df = df.loc[trim_start:trim_end]
 
         return df
 

@@ -19,16 +19,17 @@ def plot_scatter_from_variable_list_by_index(
 
     fig = go.Figure()
     for var in variables:
-        fig.add_trace(
-            go.Scattergl(
-                x=df.index,
-                y=df[var],
-                name=var,
-                mode='markers',
-                marker=dict(
-                    size=constants.PLOT_MARKER_SIZE,
-                ))
-        )
+        if var is not None:
+            fig.add_trace(
+                go.Scattergl(
+                    x=df.index,
+                    y=df[var],
+                    name=var,
+                    mode='markers',
+                    marker=dict(
+                        size=constants.PLOT_MARKER_SIZE,
+                    ))
+            )
     fig.update_yaxes(mirror=True, showline=True, linecolor='black', linewidth=2)
     fig.update_xaxes(mirror=True, showline=True, linecolor='black', linewidth=2)
     fig.update_layout(**constants.PLOT_LAYOUT_COMMON,
@@ -39,7 +40,8 @@ def plot_scatter_from_variable_list_by_index(
 
 
 def generate_grid_plot(
-    df: pd.DataFrame
+    df: pd.DataFrame,
+    all_instruments: List[str]
 ) -> go.Figure:
 
     colors = generate_normalised_colours(df)
@@ -89,20 +91,6 @@ def generate_grid_plot(
         row=1, col=1)
 
     fig.add_trace(go.Scattergl(
-        x=df["smart_tether_T (deg C)"],
-        y=df["flight_computer_Altitude"],
-        name="Temperature (Smart Tether)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            line_width=2,
-            showscale=False,
-            symbol="diamond-open"
-        )),
-        row=1, col=1)
-
-    fig.add_trace(go.Scattergl(
         x=df["flight_computer_RH1"],
         y=df["flight_computer_Altitude"],
         name="Relative Humidity1 (Flight Computer)",
@@ -129,45 +117,6 @@ def generate_grid_plot(
             symbol="x-open"
         )),
         row=1, col=2)
-
-    fig.add_trace(go.Scattergl(
-        x=df["smart_tether_%RH"],
-        y=df["flight_computer_Altitude"],
-        name="Relative Humidity (Smart Tether)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            line_width=2,
-            showscale=False,
-            symbol="diamond-open"
-        )),
-        row=1, col=2)
-
-    fig.add_trace(go.Scattergl(
-        x=df["smart_tether_Wind (m/s)"],
-        y=df["flight_computer_Altitude"],
-        name="Wind speed (Smart Tether)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            showscale=False
-        )),
-        row=1, col=3)
-
-    fig.add_trace(go.Scattergl(
-        x=df["smart_tether_Wind (degrees)"],
-        y=df["flight_computer_Altitude"],
-        name="Wind direction (Smart Tether)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            showscale=False
-        )),
-
-        row=1, col=4)
 
     fig.add_trace(go.Scattergl(
         x=df["flight_computer_TEMP1"],
@@ -211,31 +160,18 @@ def generate_grid_plot(
         )),
         row=2, col=1)
 
-    fig.add_trace(go.Scattergl(
-        x=df["smart_tether_T (deg C)"],
-        y=df["flight_computer_Altitude"],
-        name="Temperature (Smart Tether)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            line_width=2,
-            showscale=False,
-            symbol="diamond-open"
-        )),
-        row=2, col=1)
-
-    fig.add_trace(go.Scattergl(
-        x=df['pops_PartCon_186'],
-        y=df["flight_computer_Altitude"],
-        name="PartCon_186 (POPS)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            showscale=False
-        )),
-        row=2, col=2)
+    if "pops" in all_instruments:
+        fig.add_trace(go.Scattergl(
+            x=df['pops_PartCon_186'],
+            y=df["flight_computer_Altitude"],
+            name="PartCon_186 (POPS)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                showscale=False
+            )),
+            row=2, col=2)
 
     fig.add_trace(go.Scattergl(
         x=df['flight_computer_CO2'],
@@ -249,47 +185,119 @@ def generate_grid_plot(
         )),
         row=2, col=3)
 
-    fig.add_trace(go.Scattergl(
-        x=df['stap_sigmab_smth'],
-        y=df["flight_computer_Altitude"],
-        name="sigmab_smth (STAP)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            line_width=2,
-            showscale=False,
-            symbol="circle-open"
-        )),
-        row=2, col=4)
+    # Add smart tether data if it exists
+    if "smart_tether" in all_instruments:
+        fig.add_trace(go.Scattergl(
+            x=df["smart_tether_T (deg C)"],
+            y=df["flight_computer_Altitude"],
+            name="Temperature (Smart Tether)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                line_width=2,
+                showscale=False,
+                symbol="diamond-open"
+            )),
+            row=1, col=1)
 
-    fig.add_trace(go.Scattergl(
-        x=df['stap_sigmag_smth'],
-        y=df["flight_computer_Altitude"],
-        name="sigmag_smth (STAP)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            line_width=2,
-            showscale=False,
-            symbol="x-open"
-        )),
-        row=2, col=4)
+        fig.add_trace(go.Scattergl(
+            x=df["smart_tether_%RH"],
+            y=df["flight_computer_Altitude"],
+            name="Relative Humidity (Smart Tether)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                line_width=2,
+                showscale=False,
+                symbol="diamond-open"
+            )),
+            row=1, col=2)
 
-    fig.add_trace(go.Scattergl(
-        x=df['stap_sigmar_smth'],
-        y=df["flight_computer_Altitude"],
-        name="sigmar_smth (STAP)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            line_width=2,
-            showscale=False,
-            symbol="diamond-open"
-        )),
-        row=2, col=4)
+        fig.add_trace(go.Scattergl(
+            x=df["smart_tether_Wind (m/s)"],
+            y=df["flight_computer_Altitude"],
+            name="Wind speed (Smart Tether)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                showscale=False
+            )),
+            row=1, col=3)
+
+        fig.add_trace(go.Scattergl(
+            x=df["smart_tether_Wind (degrees)"],
+            y=df["flight_computer_Altitude"],
+            name="Wind direction (Smart Tether)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                showscale=False
+            )),
+
+            row=1, col=4)
+
+        fig.add_trace(go.Scattergl(
+            x=df["smart_tether_T (deg C)"],
+            y=df["flight_computer_Altitude"],
+            name="Temperature (Smart Tether)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                line_width=2,
+                showscale=False,
+                symbol="diamond-open"
+            )),
+            row=2, col=1)
+
+    # Add STAP data if it exists
+    if "stap" in all_instruments:
+        fig.add_trace(go.Scattergl(
+            x=df['stap_sigmab_smth'],
+            y=df["flight_computer_Altitude"],
+            name="sigmab_smth (STAP)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                line_width=2,
+                showscale=False,
+                symbol="circle-open"
+            )),
+            row=2, col=4)
+
+        fig.add_trace(go.Scattergl(
+            x=df['stap_sigmag_smth'],
+            y=df["flight_computer_Altitude"],
+            name="sigmag_smth (STAP)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                line_width=2,
+                showscale=False,
+                symbol="x-open"
+            )),
+            row=2, col=4)
+
+        fig.add_trace(go.Scattergl(
+            x=df['stap_sigmar_smth'],
+            y=df["flight_computer_Altitude"],
+            name="sigmar_smth (STAP)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                line_width=2,
+                showscale=False,
+                symbol="diamond-open"
+            )),
+            row=2, col=4)
+
     # Give each plot a border and white background
     for row in [1, 2]:
         for col in [1, 2, 3, 4]:
