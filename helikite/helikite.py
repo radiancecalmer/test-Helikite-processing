@@ -53,7 +53,8 @@ def main():
     # Append each df for merging
     all_export_dfs = []
 
-    time_trim_start = pd.to_datetime(yaml_config['global']['time_trim']['start'])
+    time_trim_start = pd.to_datetime(
+        yaml_config['global']['time_trim']['start'])
     time_trim_end = pd.to_datetime(yaml_config['global']['time_trim']['end'])
 
     ground_station = yaml_config['ground_station']
@@ -101,9 +102,6 @@ def main():
         df = instrument_obj.set_housekeeping_pressure_offset_variable(
             df, column_name=constants.HOUSEKEEPING_VAR_PRESSURE
         )
-
-        # Generate the plots and add them to the list
-        # figures = figures + instrument_obj.create_plots(df)
 
         # Save dataframe to outputs folder
         df.to_csv(
@@ -239,7 +237,8 @@ def main():
         for figure in heatmaps:
             figures_quicklook.append(figure)
 
-        if plot_props['msems_readings_averaged'] is not None and len(plot_props['msems_readings_averaged']):
+        if (plot_props['msems_readings_averaged'] is not None
+            and len(plot_props['msems_readings_averaged'])):
             for title, times in plot_props['msems_readings_averaged'].items():
                 fig = plots.generate_average_bin_concentration_plot(
                     master_df, title, times[0], times[1])
@@ -265,7 +264,8 @@ if __name__ == '__main__':
             logger.info("Generating YAML configuration in input folder")
             preprocess.generate_config(overwrite=True)
         else:
-            logger.error("Unknown argument. Options are: preprocess, generate_config")
+            logger.error("Unknown argument. Options are: preprocess, "
+                         "generate_config")
     else:
         # If no args, run the main application
         main()

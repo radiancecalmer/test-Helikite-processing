@@ -10,9 +10,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from instruments.smart_tether import SmartTether, smart_tether
 
 
-def test_set_time_as_index(st_data):
+def test_set_time_as_index(st_data_fake_midnight):
     # call the function under test
-    df = smart_tether.set_time_as_index(st_data)
+    df = smart_tether.set_time_as_index(st_data_fake_midnight)
 
     # check that the datetime column is set as the index
     assert df.index.name == "DateTime"

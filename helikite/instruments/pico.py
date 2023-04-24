@@ -60,26 +60,6 @@ class Pico(Instrument):
 
         return df
 
-    # def create_plots(
-    #     self,
-    #     df: pd.DataFrame
-    # ) -> List[Figure | None]:
-    #     figlist = []
-    #     fig = go.Figure()
-
-    #     for var in ["win1Fit7", "win1Fit8"]:
-    #         fig.add_trace(
-    #         go.Scatter(
-    #             x=df.index,
-    #             y=df[var],
-    #             name=var))
-
-    #     fig.update_layout(title="Pico")
-
-    #     figlist.append(fig)
-
-    #     return figlist
-
 pico = Pico(
     dtype={
         "Time Stamp": "str",

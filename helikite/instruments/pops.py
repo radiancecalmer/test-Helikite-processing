@@ -47,7 +47,6 @@ class POPS(Instrument):
         '''
 
         df['DateTime'] = pd.to_datetime(df['DateTime'], unit='s')
-        # df.drop(columns=["date", "time"], inplace=True)
 
         # Round the milliseconds to the nearest second
         df['DateTime'] = pd.to_datetime(df.DateTime).round('s')
@@ -73,26 +72,6 @@ class POPS(Instrument):
         df.drop(columns="PartCon", inplace=True)
 
         return df
-
-    # def create_plots(
-    #     self,
-    #     df: pd.DataFrame
-    # ) -> List[Figure | None]:
-    #     figlist = []
-    #     fig = go.Figure()
-
-    #     for var in ["POPS_Flow"]:
-    #         fig.add_trace(
-    #         go.Scatter(
-    #             x=df.index,
-    #             y=df[var],
-    #             name=var))
-
-    #     fig.update_layout(title="POPS")
-
-    #     figlist.append(fig)
-
-    #     return figlist
 
 pops = POPS(
     dtype={
