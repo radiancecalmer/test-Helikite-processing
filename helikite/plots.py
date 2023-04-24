@@ -426,7 +426,10 @@ def generate_average_bin_concentration_plot(
     df: pd.DataFrame,
     title: str,
     timestamp_start: pd.Timestamp,
-    timestamp_end: pd.Timestamp
+    timestamp_end: pd.Timestamp,
+    bin_limit_col_prefix: str = 'msems_inverted_Bin_Lim',
+    bin_concentration_col_prefix: str = 'msems_inverted_Bin_Conc',
+    bin_quantity_col: str = 'msems_inverted_NumBins'
 ) -> go.Figure:
     ''' With a given timestamp, generate an average of MSEM bin concentrations
 
@@ -452,18 +455,33 @@ def generate_average_bin_concentration_plot(
     df = df[timestamp_start:timestamp_end]
 
     # Get number of bins
-    bins = reduce_column_to_single_unique_value(df, 'msems_inverted_NumBins')
+    bins = reduce_column_to_single_unique_value(df, bin_quantity_col)
 
-    x = df[[f"msems_inverted_Bin_Lim{x}" for x in range(1, bins)]].mean(
-        numeric_only=True)
-    y = df[[f"msems_inverted_Bin_Conc{x}" for x in range(1, bins)]].mean(
-        numeric_only=True)
+    x = df[[f"{bin_limit_col_prefix}{x}" for x in range(1, bins)]]
+    y = df[[f"{bin_concentration_col_prefix}{x}" for x in range(1, bins)]]
 
-    fig = go.Figure(data=go.Scatter(
-            x=x.to_numpy().flatten(),
-            y=y.to_numpy().flatten()))
-    fig.update_layout(**constants.PLOT_LAYOUT_COMMON,
-                      title=f"{title}: ({timestamp_start} to {timestamp_end})")
+    fig = go.Figure(data=go.Scattergl(
+            x=x.mean(numeric_only=True).to_numpy().flatten(),
+            y=y.mean(numeric_only=True).to_numpy().flatten(),
+            line={"width": 5},
+            name="Average"
+    ))
+    for i in range(0, min(len(x), len(y))):
+        recordx = x.iloc[i]
+        recordy = y.iloc[i]
+        fig.add_trace(go.Scattergl(
+            x=recordx.to_numpy().flatten(),
+            y=recordy.to_numpy().flatten(),
+            name=str(recordx.name),
+            line={
+                "color": "rgba(143, 82, 244 ,0.1)",
+                "width": 1.5
+            },
+        )
+        )
+
+    fig.update_layout(title=f"{title}: ({len(x)} records; "
+                            f"{timestamp_start} to {timestamp_end})")
     fig.update_layout(height=600)
     fig.update_xaxes(title_text="Bin size")
     fig.update_yaxes(title_text="Particle concentration")
