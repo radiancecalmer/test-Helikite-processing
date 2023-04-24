@@ -460,13 +460,12 @@ def generate_average_bin_concentration_plot(
     x = df[[f"{bin_limit_col_prefix}{x}" for x in range(1, bins)]]
     y = df[[f"{bin_concentration_col_prefix}{x}" for x in range(1, bins)]]
 
-    fig = go.Figure(data=go.Scattergl(
-            x=x.mean(numeric_only=True).to_numpy().flatten(),
-            y=y.mean(numeric_only=True).to_numpy().flatten(),
-            line={"width": 5},
-            name="Average"
-    ))
-    for i in range(0, min(len(x), len(y))):
+    fig = go.Figure()
+
+    num_records = min(len(x), len(y))
+    logger.info(f"Generating mean MSEMS plot for {title} with {num_records} "
+                "records")
+    for i in range(0, num_records):
         recordx = x.iloc[i]
         recordy = y.iloc[i]
         fig.add_trace(go.Scattergl(
@@ -474,16 +473,32 @@ def generate_average_bin_concentration_plot(
             y=recordy.to_numpy().flatten(),
             name=str(recordx.name),
             line={
-                "color": "rgba(143, 82, 244 ,0.1)",
-                "width": 1.5
+                "color": "rgba(143, 82, 244 ,0.2)",
+                "width": 2.5
             },
         )
         )
 
-    fig.update_layout(title=f"{title}: ({len(x)} records; "
+    # Plot the mean
+    fig.add_trace(go.Scattergl(
+        x=x.mean(numeric_only=True).to_numpy().flatten(),
+        y=y.mean(numeric_only=True).to_numpy().flatten(),
+        line={
+            "width": 5,
+            "color": "rgba(255, 0, 0, 1)"
+        },
+        name="Mean"
+    ))
+
+    fig.update_layout(title=f"{title}: ({num_records} records; "
                             f"{timestamp_start} to {timestamp_end})")
     fig.update_layout(height=600)
-    fig.update_xaxes(title_text="Bin size")
+    fig.update_xaxes(title_text="Bin size",
+                     type='log',
+                     range=(np.log10(x.mean()[0]), np.log10(x.mean()[-1])),
+                     tickformat="f",
+                     nticks=4
+    )
     fig.update_yaxes(title_text="Particle concentration")
 
     return fig
