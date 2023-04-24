@@ -136,7 +136,6 @@ def main():
     master_housekeeping_cols += hk_cols  # Combine list of housekeeping columns
     # Merge the rest
     for df, sort_id, hk_cols, export_cols, name in all_export_dfs[1:]:
-
         master_df = master_df.merge(
             df, how="outer", left_index=True, right_index=True)
         master_export_cols += export_cols
@@ -227,22 +226,45 @@ def main():
                 )
             )
 
-
+    # Generate MSEMS related plots (heatmaps and average bin concentration)
     if "msems_scan" in all_instruments:
+        # Create a list of tuples of the form (title, time_start, time_end)
+        # for each plot to be used to generate bins in msems altitude plot
+        msems_bins = [
+            (x, y['time_start'], y['time_end'])
+            for x, y in plot_props['msems_readings_averaged'].items()
+        ]
+        figures_quicklook.append(
+            plots.generate_altitude_concentration_plot(master_df, msems_bins)
+        )
+
         heatmaps = plots.generate_particle_heatmap(
             master_df,
             plot_props['heatmap']['msems_inverted'],
             plot_props['heatmap']['msems_scan'],)
 
+        # Heatmaps are returned as a list of figures, so add them to the
+        # figures list
         for figure in heatmaps:
             figures_quicklook.append(figure)
 
-        if (plot_props['msems_readings_averaged'] is not None
-            and len(plot_props['msems_readings_averaged'])):
-            for title, times in plot_props['msems_readings_averaged'].items():
-                fig = plots.generate_average_bin_concentration_plot(
-                    master_df, title, times[0], times[1])
-                figures_quicklook.append(fig)
+        # Generate average bin concentration plots
+        for title, props in plot_props['msems_readings_averaged'].items():
+            # If either of the times are None, skip this plot
+            if props['time_start'] is None or props['time_end'] is None:
+                logger.warning("No time set for MSEMS readings averaged plot "
+                               f"titled: '{title}'. Skipping")
+                continue
+
+            # Generate the plot using the parameters from the config file
+            fig = plots.generate_average_bin_concentration_plot(
+                df=master_df,
+                title=title,
+                timestamp_start=props['time_start'],
+                timestamp_end=props['time_end'],
+                y_logscale=props['log_y'],
+            )
+            figures_quicklook.append(fig)
 
     # Save quicklook and qualitycheck plots to HTML files
     quicklook_filename = os.path.join(output_path_with_time,

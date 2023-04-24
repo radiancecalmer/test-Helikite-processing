@@ -29,7 +29,6 @@ class STAP(Instrument):
         if first_lines_of_csv[0] == "datetimes,sample_press_mbar,sample_temp_C,sigmab,sigmag,sigmar,sigmab_smth,sigmag_smth,sigmar_smth\n":
             return True
 
-
     def set_time_as_index(
         self,
         df: pd.DataFrame

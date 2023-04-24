@@ -158,7 +158,12 @@ def generate_config(
                 'zmid': None,
             },
         },
-        'msems_readings_averaged': None
+        'msems_readings_averaged': {
+            'Title1': {
+                'time_start': None,
+                'time_end': None,
+                'log_y': False,
+        }}
     }
 
     for instrument, obj in instrument_objects:

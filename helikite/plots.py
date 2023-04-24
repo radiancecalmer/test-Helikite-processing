@@ -2,7 +2,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
 import pandas as pd
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 import logging
 from constants import constants
 import numpy as np
@@ -429,7 +429,8 @@ def generate_average_bin_concentration_plot(
     timestamp_end: pd.Timestamp,
     bin_limit_col_prefix: str = 'msems_inverted_Bin_Lim',
     bin_concentration_col_prefix: str = 'msems_inverted_Bin_Conc',
-    bin_quantity_col: str = 'msems_inverted_NumBins'
+    bin_quantity_col: str = 'msems_inverted_NumBins',
+    y_logscale: bool = False,
 ) -> go.Figure:
     ''' With a given timestamp, generate an average of MSEM bin concentrations
 
@@ -443,6 +444,15 @@ def generate_average_bin_concentration_plot(
         Start timestamp of period to average
     timestamp_end : str
         End timestamp of period to average
+    bin_limit_col_prefix : str, optional
+        Prefix of column containing bin limits, default 'msems_inverted_Bin_Lim'
+    bin_concentration_col_prefix : str, optional
+        Prefix of column containing bin concentrations,
+        default 'msems_inverted_Bin_Conc'
+    bin_quantity_col : str, optional
+        Column containing number of bins, default 'msems_inverted_NumBins'
+    y_logscale : bool, optional
+        Whether to use a log scale for the y axis, default False
 
 
     Returns
@@ -500,6 +510,10 @@ def generate_average_bin_concentration_plot(
                      nticks=4
     )
     fig.update_yaxes(title_text="Particle concentration")
+
+    if y_logscale:
+        fig.update_yaxes(type='log')
+
 
     return fig
 
@@ -561,6 +575,28 @@ def generate_altitude_plot(
     )
 
     return fig
+
+def generate_altitude_concentration_plot(
+    df: pd.DataFrame,
+    bins: List[Tuple[str, str, str]],
+    height: int = 400
+) -> go.Figure:
+
+    colors = generate_normalised_colours(df)
+
+    fig = generate_altitude_plot(df)
+
+    for title, time_start, time_end in bins:
+        fig.add_vrect(
+            x0=time_start, x1=time_end,
+            annotation_text=title, annotation_position="top left",
+            fillcolor="green", opacity=0.25, line_width=0
+        )
+
+    fig.update_layout(height=height)
+
+    return fig
+
 
 def generate_normalised_colours(
     df: pd.DataFrame,
