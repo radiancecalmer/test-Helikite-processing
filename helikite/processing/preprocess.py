@@ -146,6 +146,7 @@ def generate_config(
         'pressure': None
     }
     yaml_config['plots'] = {
+        'altitude_ground_level': False,
         'heatmap': {
             'msems_inverted': {
                 'zmin': None,

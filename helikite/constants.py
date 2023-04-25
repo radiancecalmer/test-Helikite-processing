@@ -15,6 +15,10 @@ class Constants(BaseSettings):
     LOGLEVEL_CONSOLE: str = "INFO"
     LOGLEVEL_FILE: str = "DEBUG"
 
+    # Column names
+    ALTITUDE_GROUND_LEVEL_COL: str = "flight_computer_Altitude_agl"
+    ALTITUDE_SEA_LEVEL_COL: str = "flight_computer_Altitude"
+
     # Plots
     QUICKLOOK_PLOT_FILENAME: str = "helikite-quicklooks.html"
     QUALITYCHECK_PLOT_FILENAME: str = "helikite-qualitycheck.html"

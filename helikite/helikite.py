@@ -58,7 +58,6 @@ def main():
     time_trim_end = pd.to_datetime(yaml_config['global']['time_trim']['end'])
 
     ground_station = yaml_config['ground_station']
-
     plot_props = yaml_config['plots']
 
     # Keep list of names of instruments that were processed successfully
@@ -159,9 +158,22 @@ def main():
                      constants.HOUSEKEEPING_CSV_FILENAME))
 
     # Plots
-    figures_quicklook.append(plots.generate_altitude_plot(master_df))
+
+    # Set altitude plots based on ground station altitude or calculated
+    if plot_props['altitude_ground_level'] is True:
+        altitude_col = constants.ALTITUDE_GROUND_LEVEL_COL
+        logger.info('Plotting altitude relative to ground level')
+    else:
+        altitude_col = constants.ALTITUDE_SEA_LEVEL_COL
+        logger.info('Plotting altitude relative to sea level')
+
+
+    figures_quicklook.append(plots.generate_altitude_plot(
+        master_df, altitude_col=altitude_col)
+    )
     figures_quicklook.append(plots.generate_grid_plot(
-        master_df, all_instruments))
+        master_df, all_instruments, altitude_col=altitude_col)
+    )
 
     # Housekeeping pressure vars as qualitychecks
     figures_qualitycheck.append(
@@ -235,7 +247,9 @@ def main():
             for x, y in plot_props['msems_readings_averaged'].items()
         ]
         figures_quicklook.append(
-            plots.generate_altitude_concentration_plot(master_df, msems_bins)
+            plots.generate_altitude_concentration_plot(
+                master_df, msems_bins, altitude_col=altitude_col
+            )
         )
 
         heatmaps = plots.generate_particle_heatmap(

@@ -45,6 +45,8 @@ class FlightComputer(Instrument):
         if first_lines_of_csv[0] == CSV_HEADER:
             return True
 
+        return False
+
     def data_corrections(
         self,
         df: pd.DataFrame,
@@ -63,9 +65,9 @@ class FlightComputer(Instrument):
                     df.index[0]:df.index[0] + pd.Timedelta(
                     seconds=start_duration_seconds)
                 ]
-                average_first_period = first_period.mean(numeric_only=True)
+
+                averaged_sample = first_period.mean(numeric_only=True)
             except IndexError as e:
-                logger.error(len(df))
                 logger.error(
                     "There is not enough data in the flight computer to "
                     f"measure the first {start_duration_seconds} seconds for "
@@ -77,21 +79,44 @@ class FlightComputer(Instrument):
                 )
                 raise e
 
-        logger.info(
-            f"Pressure at start calculated to: "
-            f"{average_first_period[self.pressure_variable]} "
-            f"(Flight Computer: {self.pressure_variable})"
-        )
-        logger.info(
-            f"Temperature at start calculated to: "
-            f"{average_first_period.TEMP1} (Flight Computer: TEMP1)"
-        )
+        if start_pressure is None:
+            pressure = round(averaged_sample[self.pressure_variable], 2)
+            logger.info(
+                f"No defined ground station pressure. Using estimate from "
+                f"first {start_duration_seconds} seconds of data. Calculated "
+                f"to: {pressure} (Flight Computer: {self.pressure_variable})"
+            )
+        else:
+            pressure = start_pressure
+            logger.info(
+                f"Pressure at start defined in config as: {pressure}"
+            )
 
+        if start_temperature is None:
+            temperature = round(averaged_sample.TEMP1, 2)
+            logger.info(
+                f"No defined ground station temperature. Using estimate from "
+                f"first {start_duration_seconds} seconds of data. Calculated "
+                f"to: {temperature} (Flight Computer: TEMP1)"
+            )
+        else:
+            temperature = start_temperature
+            logger.info(
+                f"Temperature at start defined in config as: {temperature}"
+            )
+
+        # Calculate altitude above mean sea level
         df['Altitude'] = df[self.pressure_variable].apply(
             pressure_to_altitude,
-            pressure_at_start=average_first_period[self.pressure_variable],
-            temperature_at_start=average_first_period.TEMP1,
+            pressure_at_start=pressure,
+            temperature_at_start=averaged_sample.TEMP1,
             altitude_at_start=start_altitude if start_altitude else 0
+        )
+
+        # Create a new column representing altitude above ground level
+        # by subtracting starting altitude from calculated
+        df['Altitude_agl'] = (
+            df['Altitude'] - start_altitude if start_altitude else 0
         )
 
         return df
@@ -169,10 +194,10 @@ flight_computer = FlightComputer(
     },
     na_values=["NA", "-9999.00"],
     comment="#",
-    cols_export=["Altitude", "P_baro", "CO2", "TEMP1", "TEMP2",
+    cols_export=["Altitude", "Altitude_agl", "P_baro", "CO2", "TEMP1", "TEMP2",
                  "TEMPsamp", "RH1", "RH2", "RHsamp", "mFlow"],
-    cols_housekeeping=['Altitude', 'SBI', 'PartCon', 'CO2', 'P_baro', 'TEMPbox',
-                       'mFlow', 'TEMPsamp', 'RHsamp', 'TEMP1', 'RH1', 'TEMP2',
-                       'RH2', 'vBat'],
+    cols_housekeeping=['Altitude', "Altitude_agl", 'SBI', 'PartCon', 'CO2',
+                       'P_baro', 'TEMPbox', 'mFlow', 'TEMPsamp', 'RHsamp',
+                       'TEMP1', 'RH1', 'TEMP2', 'RH2', 'vBat'],
     export_order=100,
     pressure_variable='P_baro')

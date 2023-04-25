@@ -41,7 +41,8 @@ def plot_scatter_from_variable_list_by_index(
 
 def generate_grid_plot(
     df: pd.DataFrame,
-    all_instruments: List[str]
+    all_instruments: List[str],
+    altitude_col: str = "flight_computer_Altitude",
 ) -> go.Figure:
 
     colors = generate_normalised_colours(df)
@@ -50,7 +51,7 @@ def generate_grid_plot(
 
     fig.add_trace(go.Scattergl(
         x=df["flight_computer_TEMP1"],
-        y=df["flight_computer_Altitude"],
+        y=df[altitude_col],
         name="Temperature1 (Flight Computer)",
         mode="markers",
         marker=dict(
@@ -64,7 +65,7 @@ def generate_grid_plot(
 
     fig.add_trace(go.Scattergl(
         x=df["flight_computer_TEMP2"],
-        y=df["flight_computer_Altitude"],
+        y=df[altitude_col],
         name="Temperature2 (Flight Computer)",
         mode="markers",
         marker=dict(
@@ -78,7 +79,7 @@ def generate_grid_plot(
 
     fig.add_trace(go.Scattergl(
         x=df["flight_computer_TEMPsamp"],
-        y=df["flight_computer_Altitude"],
+        y=df[altitude_col],
         name="TemperatureSamp (Flight Computer)",
         mode="markers",
         marker=dict(
@@ -92,7 +93,7 @@ def generate_grid_plot(
 
     fig.add_trace(go.Scattergl(
         x=df["flight_computer_RH1"],
-        y=df["flight_computer_Altitude"],
+        y=df[altitude_col],
         name="Relative Humidity1 (Flight Computer)",
         mode="markers",
         marker=dict(
@@ -106,7 +107,7 @@ def generate_grid_plot(
 
     fig.add_trace(go.Scattergl(
         x=df["flight_computer_RH2"],
-        y=df["flight_computer_Altitude"],
+        y=df[altitude_col],
         name="Relative Humidity2 (Flight Computer)",
         mode="markers",
         marker=dict(
@@ -120,7 +121,7 @@ def generate_grid_plot(
 
     fig.add_trace(go.Scattergl(
         x=df["flight_computer_TEMP1"],
-        y=df["flight_computer_Altitude"],
+        y=df[altitude_col],
         name="Temperature1 (Flight Computer)",
         mode="markers",
         marker=dict(
@@ -134,7 +135,7 @@ def generate_grid_plot(
 
     fig.add_trace(go.Scattergl(
         x=df["flight_computer_TEMP2"],
-        y=df["flight_computer_Altitude"],
+        y=df[altitude_col],
         name="Temperature2 (Flight Computer)",
         mode="markers",
         marker=dict(
@@ -148,7 +149,7 @@ def generate_grid_plot(
 
     fig.add_trace(go.Scattergl(
         x=df["flight_computer_TEMPsamp"],
-        y=df["flight_computer_Altitude"],
+        y=df[altitude_col],
         name="TemperatureSamp (Flight Computer)",
         mode="markers",
         marker=dict(
@@ -163,7 +164,7 @@ def generate_grid_plot(
     if "pops" in all_instruments:
         fig.add_trace(go.Scattergl(
             x=df['pops_PartCon_186'],
-            y=df["flight_computer_Altitude"],
+            y=df[altitude_col],
             name="PartCon_186 (POPS)",
             mode="markers",
             marker=dict(
@@ -175,7 +176,7 @@ def generate_grid_plot(
 
     fig.add_trace(go.Scattergl(
         x=df['flight_computer_CO2'],
-        y=df["flight_computer_Altitude"],
+        y=df[altitude_col],
         name="CO2 (Flight Computer)",
         mode="markers",
         marker=dict(
@@ -189,7 +190,7 @@ def generate_grid_plot(
     if "smart_tether" in all_instruments:
         fig.add_trace(go.Scattergl(
             x=df["smart_tether_T (deg C)"],
-            y=df["flight_computer_Altitude"],
+            y=df[altitude_col],
             name="Temperature (Smart Tether)",
             mode="markers",
             marker=dict(
@@ -203,7 +204,7 @@ def generate_grid_plot(
 
         fig.add_trace(go.Scattergl(
             x=df["smart_tether_%RH"],
-            y=df["flight_computer_Altitude"],
+            y=df[altitude_col],
             name="Relative Humidity (Smart Tether)",
             mode="markers",
             marker=dict(
@@ -217,7 +218,7 @@ def generate_grid_plot(
 
         fig.add_trace(go.Scattergl(
             x=df["smart_tether_Wind (m/s)"],
-            y=df["flight_computer_Altitude"],
+            y=df[altitude_col],
             name="Wind speed (Smart Tether)",
             mode="markers",
             marker=dict(
@@ -229,7 +230,7 @@ def generate_grid_plot(
 
         fig.add_trace(go.Scattergl(
             x=df["smart_tether_Wind (degrees)"],
-            y=df["flight_computer_Altitude"],
+            y=df[altitude_col],
             name="Wind direction (Smart Tether)",
             mode="markers",
             marker=dict(
@@ -242,7 +243,7 @@ def generate_grid_plot(
 
         fig.add_trace(go.Scattergl(
             x=df["smart_tether_T (deg C)"],
-            y=df["flight_computer_Altitude"],
+            y=df[altitude_col],
             name="Temperature (Smart Tether)",
             mode="markers",
             marker=dict(
@@ -258,7 +259,7 @@ def generate_grid_plot(
     if "stap" in all_instruments:
         fig.add_trace(go.Scattergl(
             x=df['stap_sigmab_smth'],
-            y=df["flight_computer_Altitude"],
+            y=df[altitude_col],
             name="sigmab_smth (STAP)",
             mode="markers",
             marker=dict(
@@ -272,7 +273,7 @@ def generate_grid_plot(
 
         fig.add_trace(go.Scattergl(
             x=df['stap_sigmag_smth'],
-            y=df["flight_computer_Altitude"],
+            y=df[altitude_col],
             name="sigmag_smth (STAP)",
             mode="markers",
             marker=dict(
@@ -286,7 +287,7 @@ def generate_grid_plot(
 
         fig.add_trace(go.Scattergl(
             x=df['stap_sigmar_smth'],
-            y=df["flight_computer_Altitude"],
+            y=df[altitude_col],
             name="sigmar_smth (STAP)",
             mode="markers",
             marker=dict(
@@ -536,6 +537,7 @@ def write_plots_to_html(
 
 def generate_altitude_plot(
     df: pd.DataFrame,
+    altitude_col: str = "flight_computer_Altitude",
 ) -> go.Figure:
 
     colors = generate_normalised_colours(df)
@@ -544,7 +546,7 @@ def generate_altitude_plot(
     fig.add_trace(
         go.Scattergl(
             x=df.index,
-            y=df["flight_computer_Altitude"],
+            y=df[altitude_col],
             name="smart_tether_Wind",
             mode="markers",
             marker=dict(
@@ -579,14 +581,22 @@ def generate_altitude_plot(
 def generate_altitude_concentration_plot(
     df: pd.DataFrame,
     bins: List[Tuple[str, str, str]],
-    height: int = 400
+    height: int = 400,
+    altitude_col: str = "flight_computer_Altitude",
 ) -> go.Figure:
 
     colors = generate_normalised_colours(df)
 
-    fig = generate_altitude_plot(df)
+    fig = generate_altitude_plot(df, altitude_col)
+
+    # Set line markers to single solid colour
+    fig.update_traces(marker=dict(color='rgb(31, 119, 180)'))
 
     for title, time_start, time_end in bins:
+        # Ignore any that don't have a start or end time
+        if time_start is None or time_end is None:
+            continue
+
         fig.add_vrect(
             x0=time_start, x1=time_end,
             annotation_text=title, annotation_position="top left",
