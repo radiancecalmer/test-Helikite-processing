@@ -8,6 +8,7 @@ import importlib
 import os
 from typing import Any, Dict
 import logging
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 logger.setLevel(constants.LOGLEVEL_CONSOLE)
@@ -45,7 +46,7 @@ def preprocess():
         full_path = os.path.join(constants.INPUTS_FOLDER, filename)
         logger.info(f"Determining instrument for {filename:40} ... ")
 
-        # Hold a list of name matches as to not match more than once for safeguard
+        # Hold a list of name matches as to not match more than once
         successful_matches = []
         instrument_match_count = 0  # Count how many matches, err if > 0
 

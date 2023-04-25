@@ -226,5 +226,4 @@ class Instrument:
             index_col=self.index_col,
         )
 
-
         return df

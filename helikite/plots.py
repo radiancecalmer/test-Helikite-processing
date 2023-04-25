@@ -6,6 +6,8 @@ from typing import List, Dict, Any, Tuple
 import logging
 from constants import constants
 import numpy as np
+from processing.helpers import reduce_column_to_single_unique_value
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(constants.LOGLEVEL_CONSOLE)
@@ -47,49 +49,67 @@ def generate_grid_plot(
 
     colors = generate_normalised_colours(df)
 
-    fig = make_subplots(rows=2, cols=4, shared_yaxes=False)
+    fig = make_subplots(rows=3, cols=4, shared_yaxes=False)
 
-    fig.add_trace(go.Scattergl(
-        x=df["flight_computer_TEMP1"],
-        y=df[altitude_col],
-        name="Temperature1 (Flight Computer)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            line_width=2,
-            showscale=False,
-            symbol="circle-open"
-        )),
-        row=1, col=1)
+    # Add the same temperature plots to all three rows
+    for row_id in range(1, 4):
 
-    fig.add_trace(go.Scattergl(
-        x=df["flight_computer_TEMP2"],
-        y=df[altitude_col],
-        name="Temperature2 (Flight Computer)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            line_width=2,
-            showscale=False,
-            symbol="x-open"
-        )),
-        row=1, col=1)
+        fig.add_trace(go.Scattergl(
+            x=df["flight_computer_TEMP1"],
+            y=df[altitude_col],
+            name="Temperature1 (Flight Computer)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                line_width=2,
+                showscale=False,
+                symbol="circle-open"
+            )),
+            row=row_id, col=1)
 
-    fig.add_trace(go.Scattergl(
-        x=df["flight_computer_TEMPsamp"],
-        y=df[altitude_col],
-        name="TemperatureSamp (Flight Computer)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            line_width=2,
-            showscale=False,
-            symbol="square-x-open"
-        )),
-        row=1, col=1)
+        fig.add_trace(go.Scattergl(
+            x=df["flight_computer_TEMP2"],
+            y=df[altitude_col],
+            name="Temperature2 (Flight Computer)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                line_width=2,
+                showscale=False,
+                symbol="x-open"
+            )),
+            row=row_id, col=1)
+
+        fig.add_trace(go.Scattergl(
+            x=df["flight_computer_TEMPsamp"],
+            y=df[altitude_col],
+            name="TemperatureSamp (Flight Computer)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                line_width=2,
+                showscale=False,
+                symbol="square-x-open"
+            )),
+            row=row_id, col=1)
+
+        if "smart_tether" in all_instruments:
+            fig.add_trace(go.Scattergl(
+                x=df["smart_tether_T (deg C)"],
+                y=df[altitude_col],
+                name="Temperature (Smart Tether)",
+                mode="markers",
+                marker=dict(
+                    color=colors,
+                    size=constants.PLOT_MARKER_SIZE,
+                    line_width=2,
+                    showscale=False,
+                    symbol="diamond-open"
+                )),
+                row=row_id, col=1)
 
     fig.add_trace(go.Scattergl(
         x=df["flight_computer_RH1"],
@@ -119,48 +139,6 @@ def generate_grid_plot(
         )),
         row=1, col=2)
 
-    fig.add_trace(go.Scattergl(
-        x=df["flight_computer_TEMP1"],
-        y=df[altitude_col],
-        name="Temperature1 (Flight Computer)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            line_width=2,
-            showscale=False,
-            symbol="circle-open"
-        )),
-        row=2, col=1)
-
-    fig.add_trace(go.Scattergl(
-        x=df["flight_computer_TEMP2"],
-        y=df[altitude_col],
-        name="Temperature2 (Flight Computer)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            line_width=2,
-            showscale=False,
-            symbol="x-open"
-        )),
-        row=2, col=1)
-
-    fig.add_trace(go.Scattergl(
-        x=df["flight_computer_TEMPsamp"],
-        y=df[altitude_col],
-        name="TemperatureSamp (Flight Computer)",
-        mode="markers",
-        marker=dict(
-            color=colors,
-            size=constants.PLOT_MARKER_SIZE,
-            line_width=2,
-            showscale=False,
-            symbol="square-x-open"
-        )),
-        row=2, col=1)
-
     if "pops" in all_instruments:
         fig.add_trace(go.Scattergl(
             x=df['pops_PartCon_186'],
@@ -188,20 +166,6 @@ def generate_grid_plot(
 
     # Add smart tether data if it exists
     if "smart_tether" in all_instruments:
-        fig.add_trace(go.Scattergl(
-            x=df["smart_tether_T (deg C)"],
-            y=df[altitude_col],
-            name="Temperature (Smart Tether)",
-            mode="markers",
-            marker=dict(
-                color=colors,
-                size=constants.PLOT_MARKER_SIZE,
-                line_width=2,
-                showscale=False,
-                symbol="diamond-open"
-            )),
-            row=1, col=1)
-
         fig.add_trace(go.Scattergl(
             x=df["smart_tether_%RH"],
             y=df[altitude_col],
@@ -238,22 +202,8 @@ def generate_grid_plot(
                 size=constants.PLOT_MARKER_SIZE,
                 showscale=False
             )),
-
             row=1, col=4)
 
-        fig.add_trace(go.Scattergl(
-            x=df["smart_tether_T (deg C)"],
-            y=df[altitude_col],
-            name="Temperature (Smart Tether)",
-            mode="markers",
-            marker=dict(
-                color=colors,
-                size=constants.PLOT_MARKER_SIZE,
-                line_width=2,
-                showscale=False,
-                symbol="diamond-open"
-            )),
-            row=2, col=1)
 
     # Add STAP data if it exists
     if "stap" in all_instruments:
@@ -299,8 +249,46 @@ def generate_grid_plot(
             )),
             row=2, col=4)
 
+    if "pico" in all_instruments:
+        fig.add_trace(go.Scattergl(
+            x=df['pico_CO (ppm)'],
+            y=df[altitude_col],
+            name="CO (Pico)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                showscale=False
+            )),
+            row=3, col=2)
+
+        fig.add_trace(go.Scattergl(
+            x=df['pico_N2O (ppm)'],
+            y=df[altitude_col],
+            name="N2O (Pico)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                showscale=False
+            )),
+            row=3, col=3)
+
+    if "ozone" in all_instruments:
+        fig.add_trace(go.Scattergl(
+            x=df['ozone_ozone'],
+            y=df[altitude_col],
+            name="Ozone (Ozone)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                showscale=False
+            )),
+            row=3, col=4)
+
     # Give each plot a border and white background
-    for row in [1, 2]:
+    for row in [1, 2, 3]:
         for col in [1, 2, 3, 4]:
             fig.update_yaxes(
                 row=row, col=col,
@@ -318,6 +306,10 @@ def generate_grid_plot(
     fig.update_xaxes(title_text="Particle Concentration 186", row=2, col=2)
     fig.update_xaxes(title_text="CO2", row=2, col=3)
     fig.update_xaxes(title_text="STAP", row=2, col=4)
+    fig.update_xaxes(title_text="Temperature (°C)", row=3, col=1)
+    fig.update_xaxes(title_text="CO", row=3, col=2)
+    fig.update_xaxes(title_text="N2O", row=3, col=3)
+    fig.update_xaxes(title_text="Ozone", row=3, col=4)
 
     layout = constants.PLOT_LAYOUT_COMMON
     layout['height'] = 1000
@@ -327,38 +319,6 @@ def generate_grid_plot(
                       )
 
     return fig
-
-def reduce_column_to_single_unique_value(
-    df: pd.DataFrame,
-    col: str
-) -> Any:
-    """Reduce a column to a single value, if possible.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Dataframe to reduce.
-    col : str
-        Column to reduce.
-
-    Returns
-    -------
-    Any
-        Single value if possible, else the original column.
-
-    Raises
-    ------
-    ValueError
-        If the column cannot be reduced to a single value.
-    """
-
-    # Get number of bins
-    values = df.groupby(col).all().index.to_list()
-    if len(values) == 1:
-        return values[0]
-    else:
-        raise ValueError(f"Unable to reduce column '{col}' to a single value. "
-                         f"All values: {values}")
 
 
 def generate_particle_heatmap(

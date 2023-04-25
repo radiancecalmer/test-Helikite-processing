@@ -11,7 +11,7 @@ import datetime
 import plots
 from functools import reduce
 import logging
-
+from typing import Dict, Any
 
 # Define a console handler
 console_handler = logging.StreamHandler()
@@ -24,11 +24,22 @@ logger = logging.getLogger(__name__)
 logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
 
-def main():
-    # Get the yaml config
-    yaml_config = preprocess.read_yaml_config(
-        os.path.join(constants.INPUTS_FOLDER,
-                     constants.CONFIG_FILE))
+def main(
+    yaml_config: Dict[str, Any],
+    output_path: str = constants.OUTPUTS_FOLDER,
+) -> None:
+    ''' Main function to run the processing and plotting of data
+
+    Parameters
+    ----------
+    yaml_config : Dict[str, Any]
+        Dictionary of the yaml configuration file
+
+    Returns
+    -------
+    None
+
+    '''
 
     # List to add plots to that will end up being exported
     figures_quicklook = []
@@ -36,10 +47,11 @@ def main():
 
     # Create a folder with the current UTC time in outputs
     output_path_with_time = os.path.join(
-        constants.OUTPUTS_FOLDER,
-        datetime.datetime.utcnow().isoformat())
+        output_path, datetime.datetime.utcnow().isoformat()
+    )
     output_path_instrument_subfolder = os.path.join(
-        output_path_with_time, constants.OUTPUTS_INSTRUMENT_SUBFOLDER)
+        output_path_with_time, constants.OUTPUTS_INSTRUMENT_SUBFOLDER
+    )
     os.makedirs(output_path_with_time)
     os.makedirs(output_path_instrument_subfolder)
 
@@ -59,10 +71,6 @@ def main():
 
     ground_station = yaml_config['ground_station']
     plot_props = yaml_config['plots']
-
-    # Keep list of names of instruments that were processed successfully
-    # to assist with plotting
-    successful_instruments = []
 
     # Go through each instrument and perform the operations on each instrument
     for instrument, props in yaml_config['instruments'].items():
@@ -133,16 +141,16 @@ def main():
 
     master_export_cols += export_cols    # Combine list of data export columns
     master_housekeeping_cols += hk_cols  # Combine list of housekeeping columns
+
     # Merge the rest
     for df, sort_id, hk_cols, export_cols, name in all_export_dfs[1:]:
+        logger.info(f'Merging instrument: {name}')
         master_df = master_df.merge(
             df, how="outer", left_index=True, right_index=True)
         master_export_cols += export_cols
         master_housekeeping_cols += hk_cols
 
     all_instruments = [x[4] for x in all_export_dfs]
-
-    logger.info(f"Merging the following instruments: {all_instruments}")
 
     # Sort rows by the date index
     master_df.index = pd.to_datetime(master_df.index)
@@ -157,8 +165,7 @@ def main():
         os.path.join(output_path_with_time,
                      constants.HOUSEKEEPING_CSV_FILENAME))
 
-    # Plots
-
+    ## Plots
     # Set altitude plots based on ground station altitude or calculated
     if plot_props['altitude_ground_level'] is True:
         altitude_col = constants.ALTITUDE_GROUND_LEVEL_COL
@@ -191,6 +198,10 @@ def main():
                  if "smart_tether" in all_instruments else None),
                 ("pops_housekeeping_pressure"
                  if "pops" in all_instruments else None),
+                ("ozone_housekeeping_pressure"
+                 if "ozone" in all_instruments else None),
+                ("pico_housekeeping_pressure"
+                    if "pico" in all_instruments else None),
             ],
         )
     )
@@ -211,6 +222,10 @@ def main():
                  if "smart_tether" in all_instruments else None),
                 ("pops_P"
                  if "pops" in all_instruments else None),
+                ("ozone_cell_pressure"
+                 if "ozone" in all_instruments else None),
+                 ("pico_P (mbars)"
+                  if "pico" in all_instruments else None)
             ],
         )
     )
@@ -230,6 +245,10 @@ def main():
         (["msems_readings_msems_errs", "msems_readings_mcpc_errs"],
          "MSEMS Readings") if "msems_readings" in all_instruments else (
         None, None),
+        (["pico_win1Fit7", "pico_win1Fit8"],
+         "Pico") if "pico" in all_instruments else (None, None),
+        (["ozone_cell_temp", "ozone_cell_pressure", "ozone_flow_rate"],
+         "Ozone") if "ozone" in all_instruments else (None, None),
     ]:
         if variables is not None:
             figures_qualitycheck.append(
@@ -290,13 +309,16 @@ def main():
                                          constants.QUALITYCHECK_PLOT_FILENAME)
     plots.write_plots_to_html(figures_qualitycheck, qualitycheck_filename)
 
+
 if __name__ == '__main__':
     # If docker arg given, don't run main
     if len(sys.argv) > 1:
         if sys.argv[1] == 'preprocess':
+            # Run the preprocessing, generate config if it doesn't exist
             preprocess.generate_config(overwrite=False)  # Write conf file
             preprocess.preprocess()
         elif sys.argv[1] == 'generate_config':
+            # Generate the config file (overwrite if it exists)
             logger.info("Generating YAML configuration in input folder")
             preprocess.generate_config(overwrite=True)
         else:
@@ -304,4 +326,9 @@ if __name__ == '__main__':
                          "generate_config")
     else:
         # If no args, run the main application
-        main()
+
+        # Get the yaml config
+        yaml_config = preprocess.read_yaml_config(
+            os.path.join(constants.INPUTS_FOLDER,
+                            constants.CONFIG_FILE))
+        main(yaml_config)

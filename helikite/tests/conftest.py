@@ -2,6 +2,8 @@ import pytest
 import os
 import sys
 import datetime
+import pandas as pd
+
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from instruments import (
@@ -43,33 +45,30 @@ def st_data_fake_midnight():
 def campaign_file_paths_and_instruments(campaign_data_location):
     instruments = {}
 
-    instruments["flight_computer"] = (
-            flight_computer,
-            os.path.join(campaign_data_location,
-                        'LOG_20220929.txt'))
-    instruments["msems_inverted"] = (
-            msems_inverted,
-            os.path.join(campaign_data_location,
-                        'mSEMS_103_220929_101343_INVERTED.txt'))
-    instruments["msems_readings"] = (
-            msems_readings,
-            os.path.join(campaign_data_location,
-                        'mSEMS_103_220929_101343_READINGS.txt'))
-    instruments["msems_scan"] = (
-            msems_scan,
-            os.path.join(campaign_data_location,
-                        'mSEMS_103_220929_101343_SCAN.txt'))
-    instruments["smart_tether"] = (
-            smart_tether,
-            os.path.join(campaign_data_location,
-                        'LOG_20220929_A.csv'))
-    instruments["pops"] = (
-            pops,
-            os.path.join(campaign_data_location,
-                        'HK_20220929x001.csv'))
-    instruments["stap"] = (
-            stap,
-            os.path.join(campaign_data_location,
-                        'STAP_220929A0_processed.txt'))
+    # Assign filenames to instrument objects
+    flight_computer.filename = os.path.join(
+        campaign_data_location, 'LOG_20220929.txt')
+    msems_inverted.filename = os.path.join(
+        campaign_data_location, 'mSEMS_103_220929_101343_INVERTED.txt')
+    msems_readings.filename = os.path.join(
+        campaign_data_location, 'mSEMS_103_220929_101343_READINGS.txt')
+    msems_scan.filename = os.path.join(
+        campaign_data_location, 'mSEMS_103_220929_101343_SCAN.txt')
+    smart_tether.filename = os.path.join(
+        campaign_data_location, 'LOG_20220929_A.csv')
+    pops.filename = os.path.join(
+        campaign_data_location, 'HK_20220929x001.csv')
+    stap.filename = os.path.join(
+        campaign_data_location, 'STAP_220929A0_processed.txt')
+
+    # Add instruments to dictionary
+    instruments["flight_computer"] = flight_computer
+    instruments['msems_inverted'] = msems_inverted
+    instruments['msems_readings'] = msems_readings
+    instruments['msems_scan'] = msems_scan
+    instruments['smart_tether'] = smart_tether
+    instruments['pops'] = pops
+    instruments['stap'] = stap
+
 
     return instruments

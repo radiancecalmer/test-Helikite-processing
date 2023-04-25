@@ -89,7 +89,6 @@ class MSEMSInverted(Instrument):
 
         return df
 
-
     def file_identifier(
         self,
         first_lines_of_csv
@@ -97,6 +96,8 @@ class MSEMSInverted(Instrument):
         # To match "...INVERTED.txt" file
         if "#Date\tTime\tTemp(C)\tPress(hPa)\tNumBins\tBin_Dia1\tBin_Dia2\tBin_Dia3" in first_lines_of_csv[0]:
             return True
+
+        return False
 
     def set_time_as_index(
         self,
