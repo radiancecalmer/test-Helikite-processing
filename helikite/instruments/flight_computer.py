@@ -102,12 +102,15 @@ class FlightComputer(Instrument):
                 f"Temperature at start defined in config as: {temperature}"
             )
 
+        altitude = start_altitude if start_altitude else 0
+        logger.info(f"Altitude at start set to: {altitude}")
+
         # Calculate altitude above mean sea level
         df['Altitude'] = df[self.pressure_variable].apply(
             pressure_to_altitude,
             pressure_at_start=pressure,
-            temperature_at_start=averaged_sample.TEMP1,
-            altitude_at_start=start_altitude if start_altitude else 0
+            temperature_at_start=temperature,
+            altitude_at_start=altitude
         )
 
         # Create a new column representing altitude above ground level
