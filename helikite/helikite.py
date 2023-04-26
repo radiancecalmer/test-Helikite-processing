@@ -118,8 +118,14 @@ def main(
         os.path.join(output_path_with_time, constants.CONFIG_FILE)
     )
 
-    # Sort the export columns in their numerical hierarchy order
+    # Sort the export columns in their numerical hierarchy order and log
     all_export_dfs.sort(key=sorting.df_column_sort_key)
+    logger.info("Instruments will be merged together with this column order:")
+    logger.info("----------")
+    for df, inst in all_export_dfs:
+        logger.info(
+            f"Instrument: {inst.name:20}"
+            f"(Export order value: {inst.export_order})")
 
     master_export_cols = []
     master_housekeeping_cols = []

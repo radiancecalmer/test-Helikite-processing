@@ -707,6 +707,12 @@ def campaign_2023(
           f"{instruments.ozone_monitor.name}_flow_rate"],
          "Ozone"
          ) if instruments.ozone_monitor in all_instruments else (None, None),
+        ([f"{instruments.filter.name}_cur_pos",
+          f"{instruments.filter.name}_smp_flw",
+          f"{instruments.filter.name}_pumpctl"],
+         "Filter"
+         ) if instruments.filter in all_instruments else (None, None),
+
     ]:
         if variables is not None:
             figures_qualitycheck.append(
