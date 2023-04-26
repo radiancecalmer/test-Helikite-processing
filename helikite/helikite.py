@@ -25,25 +25,21 @@ logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
 
 def main(
-    yaml_config: Dict[str, Any],
+    config: Dict[str, Any],
     output_path: str = constants.OUTPUTS_FOLDER,
 ) -> None:
     ''' Main function to run the processing and plotting of data
 
     Parameters
     ----------
-    yaml_config : Dict[str, Any]
-        Dictionary of the yaml configuration file
+    config : Dict[str, Any]
+        Dictionary of the configuration file
 
     Returns
     -------
     None
 
     '''
-
-    # List to add plots to that will end up being exported
-    figures_quicklook = []
-    figures_qualitycheck = []
 
     # Create a folder with the current UTC time in outputs
     output_path_with_time = os.path.join(
@@ -66,17 +62,17 @@ def main(
     all_export_dfs = []
 
     time_trim_start = pd.to_datetime(
-        yaml_config['global']['time_trim']['start'])
-    time_trim_end = pd.to_datetime(yaml_config['global']['time_trim']['end'])
+        config['global']['time_trim']['start'])
+    time_trim_end = pd.to_datetime(config['global']['time_trim']['end'])
 
-    ground_station = yaml_config['ground_station']
-    plot_props = yaml_config['plots']
+    ground_station = config['ground_station']
+    plot_props = config['plots']
 
     # Go through each instrument and perform the operations on each instrument
-    for instrument, props in yaml_config['instruments'].items():
+    for instrument, props in config['instruments'].items():
 
         instrument_obj = getattr(instruments, props['config'])
-        instrument_obj.add_yaml_config(props)
+        instrument_obj.add_config(props)
 
         if instrument_obj.filename is None:
             logger.warning(f"Skipping {instrument}: No file assigned!")
@@ -119,13 +115,11 @@ def main(
         df = instrument_obj.add_device_name_to_columns(df)
 
         # Add tuple of df and export order to df merge list
-        all_export_dfs.append((df, instrument_obj.export_order,
-                               instrument_obj.housekeeping_columns,
-                               instrument_obj.export_columns,
-                               instrument_obj.name))
+        all_export_dfs.append((df, instrument_obj))
+
 
     preprocess.export_yaml_config(
-        yaml_config,
+        config,
         os.path.join(output_path_with_time,
                         constants.CONFIG_FILE)
     )
@@ -137,20 +131,21 @@ def main(
     master_housekeeping_cols = []
 
     # Merge all the dataframes together, first df is the master
-    master_df, sort_id, hk_cols, export_cols, name = all_export_dfs[0]
+    master_df, instrument = all_export_dfs[0]
 
-    master_export_cols += export_cols    # Combine list of data export columns
-    master_housekeeping_cols += hk_cols  # Combine list of housekeeping columns
+    # Combine export and housekeeping columns
+    master_export_cols += instrument.export_columns
+    master_housekeeping_cols += instrument.housekeeping_columns
 
     # Merge the rest
-    for df, sort_id, hk_cols, export_cols, name in all_export_dfs[1:]:
-        logger.info(f'Merging instrument: {name}')
+    for df, instrument in all_export_dfs[1:]:
+        logger.info(f'Merging instrument: {instrument.name}')
         master_df = master_df.merge(
             df, how="outer", left_index=True, right_index=True)
-        master_export_cols += export_cols
-        master_housekeeping_cols += hk_cols
+        master_export_cols += instrument.export_columns
+        master_housekeeping_cols += instrument.housekeeping_columns
 
-    all_instruments = [x[4] for x in all_export_dfs]
+    all_instruments = [instrument for df, instrument in all_export_dfs]
 
     # Sort rows by the date index
     master_df.index = pd.to_datetime(master_df.index)
@@ -165,150 +160,10 @@ def main(
         os.path.join(output_path_with_time,
                      constants.HOUSEKEEPING_CSV_FILENAME))
 
-    ## Plots
-    # Set altitude plots based on ground station altitude or calculated
-    if plot_props['altitude_ground_level'] is True:
-        altitude_col = constants.ALTITUDE_GROUND_LEVEL_COL
-        logger.info('Plotting altitude relative to ground level')
-    else:
-        altitude_col = constants.ALTITUDE_SEA_LEVEL_COL
-        logger.info('Plotting altitude relative to sea level')
-
-
-    figures_quicklook.append(plots.generate_altitude_plot(
-        master_df, altitude_col=altitude_col)
+    # Create all of the plots
+    plots.campaign_2023(
+        master_df, plot_props, all_instruments, output_path_with_time
     )
-    figures_quicklook.append(plots.generate_grid_plot(
-        master_df, all_instruments, altitude_col=altitude_col)
-    )
-
-    # Housekeeping pressure vars as qualitychecks
-    figures_qualitycheck.append(
-        plots.plot_scatter_from_variable_list_by_index(
-            master_df, "Housekeeping pressure variables",
-            [
-                "flight_computer_housekeeping_pressure",
-                ("msems_readings_housekeeping_pressure"
-                 if "msems_readings" in all_instruments else None),
-                ("msems_scan_housekeeping_pressure"
-                 if "msems_scan" in all_instruments else None),
-                ("stap_housekeeping_pressure"
-                 if "stap" in all_instruments else None),
-                ("smart_tether_housekeeping_pressure"
-                 if "smart_tether" in all_instruments else None),
-                ("pops_housekeeping_pressure"
-                 if "pops" in all_instruments else None),
-                ("ozone_housekeeping_pressure"
-                 if "ozone" in all_instruments else None),
-                ("pico_housekeeping_pressure"
-                    if "pico" in all_instruments else None),
-            ],
-        )
-    )
-
-    # Same with just pressure vars
-    figures_qualitycheck.append(
-        plots.plot_scatter_from_variable_list_by_index(
-            master_df, "Pressure variables",
-            [
-                "flight_computer_P_baro",
-                ("msems_readings_pressure"
-                 if "msems_readings" in all_instruments else None),
-                ("msems_scan_press_avg"
-                 if "msems_scan" in all_instruments else None),
-                ("stap_sample_press_mbar"
-                 if "stap" in all_instruments else None),
-                ("smart_tether_P (mbar)"
-                 if "smart_tether" in all_instruments else None),
-                ("pops_P"
-                 if "pops" in all_instruments else None),
-                ("ozone_cell_pressure"
-                 if "ozone" in all_instruments else None),
-                 ("pico_P (mbars)"
-                  if "pico" in all_instruments else None)
-            ],
-        )
-    )
-
-    # Generate plots for qualitychecks based on their variable name in the
-    # merged dataframe. The two parameter Tuple[List[str], str] represents the
-    # list of variables, and the title given to the plot in the second parameter
-    for variables, instrument in [
-        (["flight_computer_vBat","flight_computer_TEMPbox"], "Flight Computer"),
-        ((["flight_computer_TEMP1", "flight_computer_TEMP2",
-          "smart_tether_T (deg C)"], "Smart Tether")
-          if "smart_tether" in all_instruments else (
-        ["flight_computer_TEMP1", "flight_computer_TEMP2"],
-           "Flight Computer")),
-        (["pops_POPS_Flow"], "POPS"
-         ) if "pops" in all_instruments else (None, None),
-        (["msems_readings_msems_errs", "msems_readings_mcpc_errs"],
-         "MSEMS Readings") if "msems_readings" in all_instruments else (
-        None, None),
-        (["pico_win1Fit7", "pico_win1Fit8"],
-         "Pico") if "pico" in all_instruments else (None, None),
-        (["ozone_cell_temp", "ozone_cell_pressure", "ozone_flow_rate"],
-         "Ozone") if "ozone" in all_instruments else (None, None),
-    ]:
-        if variables is not None:
-            figures_qualitycheck.append(
-                plots.plot_scatter_from_variable_list_by_index(
-                    master_df, instrument, variables,
-                )
-            )
-
-    # Generate MSEMS related plots (heatmaps and average bin concentration)
-    if "msems_scan" in all_instruments:
-        # Create a list of tuples of the form (title, time_start, time_end)
-        # for each plot to be used to generate bins in msems altitude plot
-        msems_bins = [
-            (x, y['time_start'], y['time_end'])
-            for x, y in plot_props['msems_readings_averaged'].items()
-        ]
-        figures_quicklook.append(
-            plots.generate_altitude_concentration_plot(
-                master_df, msems_bins, altitude_col=altitude_col
-            )
-        )
-
-        heatmaps = plots.generate_particle_heatmap(
-            master_df,
-            plot_props['heatmap']['msems_inverted'],
-            plot_props['heatmap']['msems_scan'],)
-
-        # Heatmaps are returned as a list of figures, so add them to the
-        # figures list
-        for figure in heatmaps:
-            figures_quicklook.append(figure)
-
-        # Generate average bin concentration plots
-        for title, props in plot_props['msems_readings_averaged'].items():
-            # If either of the times are None, skip this plot
-            if props['time_start'] is None or props['time_end'] is None:
-                logger.warning("No time set for MSEMS readings averaged plot "
-                               f"titled: '{title}'. Skipping")
-                continue
-
-            # Generate the plot using the parameters from the config file
-            fig = plots.generate_average_bin_concentration_plot(
-                df=master_df,
-                title=title,
-                timestamp_start=props['time_start'],
-                timestamp_end=props['time_end'],
-                y_logscale=props['log_y'],
-            )
-            figures_quicklook.append(fig)
-
-    # Save quicklook and qualitycheck plots to HTML files
-    quicklook_filename = os.path.join(output_path_with_time,
-                                      constants.QUICKLOOK_PLOT_FILENAME)
-    plots.write_plots_to_html(figures_quicklook, quicklook_filename)
-
-
-    qualitycheck_filename = os.path.join(output_path_with_time,
-                                         constants.QUALITYCHECK_PLOT_FILENAME)
-    plots.write_plots_to_html(figures_qualitycheck, qualitycheck_filename)
-
 
 if __name__ == '__main__':
     # If docker arg given, don't run main
@@ -324,11 +179,10 @@ if __name__ == '__main__':
         else:
             logger.error("Unknown argument. Options are: preprocess, "
                          "generate_config")
-    else:
-        # If no args, run the main application
+    else:  # If no args, run the main application
+        # Get the config from the YAML file in the input directory
+        config = preprocess.read_yaml_config(
+            os.path.join(constants.INPUTS_FOLDER, constants.CONFIG_FILE)
+        )
 
-        # Get the yaml config
-        yaml_config = preprocess.read_yaml_config(
-            os.path.join(constants.INPUTS_FOLDER,
-                            constants.CONFIG_FILE))
-        main(yaml_config)
+        main(config)

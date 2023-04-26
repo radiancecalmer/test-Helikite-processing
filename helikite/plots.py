@@ -7,6 +7,8 @@ import logging
 from constants import constants
 import numpy as np
 from processing.helpers import reduce_column_to_single_unique_value
+import instruments
+import os
 
 
 logger = logging.getLogger(__name__)
@@ -43,7 +45,7 @@ def plot_scatter_from_variable_list_by_index(
 
 def generate_grid_plot(
     df: pd.DataFrame,
-    all_instruments: List[str],
+    all_instruments: List[instruments.Instrument],
     altitude_col: str = "flight_computer_Altitude",
 ) -> go.Figure:
 
@@ -96,7 +98,7 @@ def generate_grid_plot(
             )),
             row=row_id, col=1)
 
-        if "smart_tether" in all_instruments:
+        if instruments.smart_tether in all_instruments:
             fig.add_trace(go.Scattergl(
                 x=df["smart_tether_T (deg C)"],
                 y=df[altitude_col],
@@ -139,7 +141,7 @@ def generate_grid_plot(
         )),
         row=1, col=2)
 
-    if "pops" in all_instruments:
+    if instruments.pops in all_instruments:
         fig.add_trace(go.Scattergl(
             x=df['pops_PartCon_186'],
             y=df[altitude_col],
@@ -165,7 +167,7 @@ def generate_grid_plot(
         row=2, col=3)
 
     # Add smart tether data if it exists
-    if "smart_tether" in all_instruments:
+    if instruments.smart_tether in all_instruments:
         fig.add_trace(go.Scattergl(
             x=df["smart_tether_%RH"],
             y=df[altitude_col],
@@ -206,7 +208,7 @@ def generate_grid_plot(
 
 
     # Add STAP data if it exists
-    if "stap" in all_instruments:
+    if instruments.stap in all_instruments:
         fig.add_trace(go.Scattergl(
             x=df['stap_sigmab_smth'],
             y=df[altitude_col],
@@ -249,7 +251,7 @@ def generate_grid_plot(
             )),
             row=2, col=4)
 
-    if "pico" in all_instruments:
+    if instruments.pico in all_instruments:
         fig.add_trace(go.Scattergl(
             x=df['pico_CO (ppm)'],
             y=df[altitude_col],
@@ -274,7 +276,7 @@ def generate_grid_plot(
             )),
             row=3, col=3)
 
-    if "ozone" in all_instruments:
+    if instruments.ozone_monitor in all_instruments:
         fig.add_trace(go.Scattergl(
             x=df['ozone_ozone'],
             y=df[altitude_col],
@@ -587,3 +589,169 @@ def generate_normalised_colours(
 
 
     return colors
+
+def campaign_2023(
+    df: pd.DataFrame,
+    plot_props: Dict[str, Any],
+    all_instruments: List[instruments.Instrument],
+    output_path_with_time: str,
+) -> None:
+
+    ''' Defines all the plots for the 2023 campaigns
+
+    Due to the plot specifications being bespoke according to plans defined
+    in 2023, this function attemps to isolate these decisions from further
+    plotting requirements in the future
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Dataframe containing all the merged data to be plotted
+    plot_props : Dict[str, Any]
+        Dictionary containing all the properties for the plots originating from
+        the runtime YAML
+    all_instruments : List[instruments.Instrument]
+        List of all instruments that are available after merging all of the data
+    output_path_with_time : str
+        Path to the output directory for the plots, most likely the one
+        generated in helikite.py with the current output time
+    '''
+
+    # Set altitude plots based on ground station altitude or calculated
+    if plot_props['altitude_ground_level'] is True:
+        altitude_col = constants.ALTITUDE_GROUND_LEVEL_COL
+        logger.info('Plotting altitude relative to ground level')
+    else:
+        altitude_col = constants.ALTITUDE_SEA_LEVEL_COL
+        logger.info('Plotting altitude relative to sea level')
+
+    # List to add plots to that will end up being exported
+    figures_quicklook = []
+    figures_qualitycheck = []
+
+
+    figures_quicklook.append(generate_altitude_plot(
+        df, altitude_col=altitude_col)
+    )
+    figures_quicklook.append(generate_grid_plot(
+        df, all_instruments, altitude_col=altitude_col)
+    )
+
+    # Create a list of instruments with pressure housekeeping variables
+    # This allows automatic addition of instrument to pressure plots
+    pressure_housekeeping = []
+    pressure_quicklook = []
+
+    for instrument in all_instruments:
+        if instrument.pressure_variable is not None:
+            pressure_housekeeping.append(
+                f"{instrument.name}_{constants.HOUSEKEEPING_VAR_PRESSURE}"
+            )
+            pressure_quicklook.append(
+                f"{instrument.name}_{instrument.pressure_variable}"
+            )
+
+    # Housekeeping pressure vars as qualitychecks
+    figures_qualitycheck.append(
+        plot_scatter_from_variable_list_by_index(
+            df, "Housekeeping pressure variables", pressure_housekeeping
+        )
+    )
+
+
+    # Same with just pressure vars
+    figures_qualitycheck.append(
+        plot_scatter_from_variable_list_by_index(
+            df, "Pressure variables", pressure_quicklook
+        )
+    )
+
+    # Generate plots for qualitychecks based on their variable name in the
+    # merged dataframe. The two parameter Tuple[List[str], str] represents the
+    # list of variables, and the title given to the plot in the second parameter
+    for variables, instrument in [
+        ([f"{instruments.flight_computer.name}_vBat",
+          f"{instruments.flight_computer.name}_TEMPbox"],
+          "Flight Computer"),
+        (([f"{instruments.flight_computer.name}_TEMP1",
+           f"{instruments.flight_computer.name}_TEMP2",
+           f"{instruments.smart_tether.name}_T (deg C)"],
+           "Smart Tether"
+        ) if instruments.smart_tether in all_instruments else (
+        [f"{instruments.flight_computer.name}_TEMP1",
+         f"{instruments.flight_computer.name}_TEMP2"],
+         "Flight Computer")),  # Don't plot smart tether temp if not present
+        ([f"{instruments.pops.name}_POPS_Flow"],
+          "POPS"
+        ) if instruments.pops in all_instruments else (None, None),
+        ([f"{instruments.msems_readings.name}_msems_errs",
+          f"{instruments.msems_readings.name}_mcpc_errs"],
+          "MSEMS Readings"
+         ) if instruments.msems_readings in all_instruments else (None, None),
+        ([f"{instruments.pico.name}_win1Fit7",
+          f"{instruments.pico.name}_win1Fit8"],
+          "Pico"
+         ) if instruments.pico in all_instruments else (None, None),
+        ([f"{instruments.ozone_monitor.name}_cell_temp",
+          f"{instruments.ozone_monitor.name}_cell_pressure",
+          f"{instruments.ozone_monitor.name}_flow_rate"],
+          "Ozone"
+         ) if instruments.ozone_monitor in all_instruments else (None, None),
+    ]:
+        if variables is not None:
+            figures_qualitycheck.append(
+                plot_scatter_from_variable_list_by_index(
+                    df, instrument, variables,
+                )
+            )
+
+    # Generate MSEMS related plots (heatmaps and average bin concentration)
+    if instruments.msems_scan in all_instruments:
+        # Create a list of tuples of the form (title, time_start, time_end)
+        # for each plot to be used to generate bins in msems altitude plot
+        msems_bins = [
+            (x, y['time_start'], y['time_end'])
+            for x, y in plot_props['msems_readings_averaged'].items()
+        ]
+        figures_quicklook.append(
+            generate_altitude_concentration_plot(
+                df, msems_bins, altitude_col=altitude_col
+            )
+        )
+
+        heatmaps = generate_particle_heatmap(
+            df,
+            plot_props['heatmap']['msems_inverted'],
+            plot_props['heatmap']['msems_scan'],)
+
+        # Heatmaps are returned as a list of figures, so add them to the
+        # figures list
+        for figure in heatmaps:
+            figures_quicklook.append(figure)
+
+        # Generate average bin concentration plots
+        for title, props in plot_props['msems_readings_averaged'].items():
+            # If either of the times are None, skip this plot
+            if props['time_start'] is None or props['time_end'] is None:
+                logger.warning("No time set for MSEMS readings averaged plot "
+                               f"titled: '{title}'. Skipping")
+                continue
+
+            # Generate the plot using the parameters from the config file
+            fig = generate_average_bin_concentration_plot(
+                df=df,
+                title=title,
+                timestamp_start=props['time_start'],
+                timestamp_end=props['time_end'],
+                y_logscale=props['log_y'],
+            )
+            figures_quicklook.append(fig)
+
+    # Save quicklook and qualitycheck plots to HTML files
+    quicklook_filename = os.path.join(output_path_with_time,
+                                      constants.QUICKLOOK_PLOT_FILENAME)
+    qualitycheck_filename = os.path.join(output_path_with_time,
+                                         constants.QUALITYCHECK_PLOT_FILENAME)
+
+    write_plots_to_html(figures_quicklook, quicklook_filename)
+    write_plots_to_html(figures_qualitycheck, qualitycheck_filename)

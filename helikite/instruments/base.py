@@ -49,8 +49,8 @@ class Instrument:
         self.time_range: Tuple[str | pd.Timestamp] | None = None
 
 
-    def add_yaml_config(self, yaml_props: Dict[str, Any]):
-        ''' Add the YAML config to the Instrument class
+    def add_config(self, yaml_props: Dict[str, Any]):
+        ''' Adds the application's config to the Instrument class
 
         This is called from the main() function in helikite.py
         '''
@@ -183,7 +183,7 @@ class Instrument:
     def set_housekeeping_pressure_offset_variable(
         self,
         df: pd.DataFrame,
-        column_name="housekeeping_pressure"
+        column_name=constants.HOUSEKEEPING_VAR_PRESSURE
     ) -> pd.DataFrame:
         ''' Generate variable to offset pressure value for housekeeping
 
