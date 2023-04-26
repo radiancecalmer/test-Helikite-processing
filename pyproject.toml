@@ -14,6 +14,7 @@ plotly = "^5.13.1"
 pyyaml = "^6.0"
 scipy = "^1.10.1"
 matplotlib = "^3.7.1"
+types-pyyaml = "^6.0.12.9"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -22,6 +23,7 @@ mypy = "^1.1.1"
 pytest = "^7.2.2"
 pytest-watch = "^4.2.0"
 pytest-cov = "^4.0.0"
+flake8 = "^6.0.0"
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,3 +1,4 @@
+# flake8: noqa
 from .stap import stap
 from .mcpc import mcpc
 from .flight_computer import flight_computer

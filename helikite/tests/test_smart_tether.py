@@ -1,13 +1,10 @@
 import pandas as pd
-import pytest
 import os
 import sys
-from io import StringIO
-import datetime
 
 # Append the root directory of your project to the system path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from instruments.smart_tether import SmartTether, smart_tether
+from instruments.smart_tether import SmartTether, smart_tether  # noqa
 
 
 def test_set_time_as_index(st_data_fake_midnight):

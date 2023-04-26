@@ -5,19 +5,15 @@
 Data from the onboard microcontroller. Resolution: 1 sec
 DateTime in seconds since 1970-01-01 (to be verified)
 
-Variables to keep: DateTime, P_baro, CO2, TEMP1, TEMP2, TEMPsamp, RH1, RH2, RHsamp, mFlow
+Variables to keep: DateTime, P_baro, CO2, TEMP1, TEMP2, TEMPsamp, RH1, RH2,
+                   RHsamp, mFlow
 Houskeeping variables: TEMPbox, vBat
 '''
 
 from instruments.base import Instrument
-from typing import Dict, Any, List
-import plotly.graph_objects as go
-from plotly.graph_objects import Figure
-import plotly.express as px
 import pandas as pd
 from processing.conversions import pressure_to_altitude
 from io import StringIO
-import csv
 import logging
 from constants import constants
 
@@ -26,7 +22,8 @@ from constants import constants
 logger = logging.getLogger(__name__)
 logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
-CSV_HEADER = "SBI,DateTime,PartCon,CO2,P_baro,TEMPbox,mFlow,TEMPsamp,RHsamp,TEMP1,RH1,TEMP2,RH2,vBat\n"
+CSV_HEADER = "SBI,DateTime,PartCon,CO2,P_baro,TEMPbox,mFlow,TEMPsamp,RHsamp," \
+             "TEMP1,RH1,TEMP2,RH2,vBat\n"
 
 
 class FlightComputer(Instrument):
@@ -63,7 +60,7 @@ class FlightComputer(Instrument):
             try:
                 first_period = df.loc[
                     df.index[0]:df.index[0] + pd.Timedelta(
-                    seconds=start_duration_seconds)
+                        seconds=start_duration_seconds)
                 ]
 
                 averaged_sample = first_period.mean(numeric_only=True)

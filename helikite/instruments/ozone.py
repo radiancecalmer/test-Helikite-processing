@@ -9,7 +9,6 @@ Headers: "ozone","cell_temp","cell_pressure","flow_rate","date","time"
 '''
 
 from .base import Instrument
-from typing import Dict, Any, List
 import pandas as pd
 
 
@@ -29,7 +28,8 @@ class OzoneMonitor(Instrument):
         # This one is tricky. There is no header! May run into conflicts later
         # Check there are six commas in the first line, and ends in 0, and only
         # a newline in the second
-        if (first_lines_of_csv[0][-2] == '0'
+        if (
+            first_lines_of_csv[0][-2] == '0'
             and first_lines_of_csv[0].count(',') == 6
             and first_lines_of_csv[1] == '\n'
         ):
@@ -41,7 +41,7 @@ class OzoneMonitor(Instrument):
         self,
         df: pd.DataFrame
     ) -> pd.DataFrame:
-        ''' Set the DateTime as index of the dataframe and correct if needed        '''
+        ''' Set the DateTime as index of the dataframe and correct '''
 
         df['DateTime'] = pd.to_datetime(
             df['date'] + ' ' + df['time'],
@@ -59,13 +59,14 @@ ozone_monitor = OzoneMonitor(
     na_values=["-"],
     index_col=0,
     header=None,
-    names=["ozone",
-           "cell_temp",
-           "cell_pressure",
-           "flow_rate",
-           "date",
-           "time",
-           "unused"
+    names=[
+        "ozone",
+        "cell_temp",
+        "cell_pressure",
+        "flow_rate",
+        "date",
+        "time",
+        "unused"
     ],
     dtype={
         "ozone": "Float64",

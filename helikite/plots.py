@@ -34,8 +34,12 @@ def plot_scatter_from_variable_list_by_index(
                         size=constants.PLOT_MARKER_SIZE,
                     ))
             )
-    fig.update_yaxes(mirror=True, showline=True, linecolor='black', linewidth=2)
-    fig.update_xaxes(mirror=True, showline=True, linecolor='black', linewidth=2)
+    fig.update_yaxes(
+        mirror=True, showline=True, linecolor='black', linewidth=2
+    )
+    fig.update_xaxes(
+        mirror=True, showline=True, linecolor='black', linewidth=2
+    )
     fig.update_layout(**constants.PLOT_LAYOUT_COMMON,
                       title=title,
                       showlegend=True)
@@ -206,7 +210,6 @@ def generate_grid_plot(
             )),
             row=1, col=4)
 
-
     # Add STAP data if it exists
     if instruments.stap in all_instruments:
         fig.add_trace(go.Scattergl(
@@ -339,18 +342,20 @@ def generate_particle_heatmap(
     x = df[['msems_inverted_StartTime']].dropna()
     fig = go.Figure(
         data=go.Heatmap(
-        z=z.T,
-        x=x.index.values,
-        y=y.mean(), colorscale = 'Viridis',
-        **props_msems_inverted
-        ))
-    fig.update_yaxes(type='log',
-                    range=(np.log10(y.mean()[0]), np.log10(y.mean()[-1])),
-                    tickformat="f",
-                    nticks=4
-                    )
+            z=z.T,
+            x=x.index.values,
+            y=y.mean(),
+            colorscale='Viridis',
+            **props_msems_inverted
+        )
+    )
+    fig.update_yaxes(
+        type='log',
+        range=(np.log10(y.mean()[0]), np.log10(y.mean()[-1])),
+        tickformat="f", nticks=4
+    )
     fig.update_layout(**constants.PLOT_LAYOUT_COMMON,
-                      title=f"Bin concentrations (msems_inverted)")
+                      title="Bin concentrations (msems_inverted)")
 
     fig.update_yaxes(title_text="D<sub>p</sub> [nm]")
     fig.update_xaxes(title_text="Time")
@@ -364,18 +369,20 @@ def generate_particle_heatmap(
 
     fig = go.Figure(
         data=go.Heatmap(
-        z=z.T,
-        x=x.index.values,
-        y=y.mean(), colorscale = 'Viridis',
-        **props_msems_scan
-        ))
-    fig.update_yaxes(type='log',
-                    range=(np.log10(y.mean()[0]), np.log10(y.mean()[-1])),
-                    tickformat="f",
-                    nticks=4
-                    )
-    fig.update_layout(**constants.PLOT_LAYOUT_COMMON,
-                      title=f"Bin readings (msems_scan)")
+            z=z.T,
+            x=x.index.values,
+            y=y.mean(),
+            colorscale='Viridis',
+            **props_msems_scan
+        )
+    )
+    fig.update_yaxes(
+        type='log', range=(np.log10(y.mean()[0]), np.log10(y.mean()[-1])),
+        tickformat="f", nticks=4
+    )
+    fig.update_layout(
+        **constants.PLOT_LAYOUT_COMMON, title="Bin readings (msems_scan)"
+    )
 
     fig.update_yaxes(title_text="D<sub>p</sub> [nm]")
     fig.update_xaxes(title_text="Time")
@@ -384,6 +391,7 @@ def generate_particle_heatmap(
     figlist.append(fig)
 
     return figlist
+
 
 def generate_average_bin_concentration_plot(
     df: pd.DataFrame,
@@ -408,7 +416,7 @@ def generate_average_bin_concentration_plot(
     timestamp_end : str
         End timestamp of period to average
     bin_limit_col_prefix : str, optional
-        Prefix of column containing bin limits, default 'msems_inverted_Bin_Lim'
+        Prefix of column containing bin limits, default: msems_inverted_Bin_Lim
     bin_concentration_col_prefix : str, optional
         Prefix of column containing bin concentrations,
         default 'msems_inverted_Bin_Conc'
@@ -466,17 +474,15 @@ def generate_average_bin_concentration_plot(
     fig.update_layout(title=f"{title}: ({num_records} records; "
                             f"{timestamp_start} to {timestamp_end})")
     fig.update_layout(height=600)
-    fig.update_xaxes(title_text="Bin size",
-                     type='log',
-                     range=(np.log10(x.mean()[0]), np.log10(x.mean()[-1])),
-                     tickformat="f",
-                     nticks=4
+    fig.update_xaxes(
+        title_text="Bin size", type='log',
+        range=(np.log10(x.mean()[0]), np.log10(x.mean()[-1])),
+        tickformat="f", nticks=4
     )
     fig.update_yaxes(title_text="Particle concentration")
 
     if y_logscale:
         fig.update_yaxes(type='log')
-
 
     return fig
 
@@ -496,6 +502,7 @@ def write_plots_to_html(
         # Write figures. They'll be sorted by the order they were added
         for fig in figures:
             f.write(fig.to_html(full_html=False, include_plotlyjs=True))
+
 
 def generate_altitude_plot(
     df: pd.DataFrame,
@@ -540,14 +547,18 @@ def generate_altitude_plot(
 
     return fig
 
+
 def generate_altitude_concentration_plot(
     df: pd.DataFrame,
     bins: List[Tuple[str, str, str]],
     height: int = 400,
     altitude_col: str = "flight_computer_Altitude",
 ) -> go.Figure:
+    ''' Generate a plot that sits above MSEMS with selected bins
 
-    colors = generate_normalised_colours(df)
+    The bins represent the periods of time that the averaged plots are
+    calculated from.
+    '''
 
     fig = generate_altitude_plot(df, altitude_col)
 
@@ -587,8 +598,8 @@ def generate_normalised_colours(
     colors = [color_scale[int(x * (len(color_scale)-1))]
               for x in normalized_index]
 
-
     return colors
+
 
 def campaign_2023(
     df: pd.DataFrame,
@@ -611,7 +622,7 @@ def campaign_2023(
         Dictionary containing all the properties for the plots originating from
         the runtime YAML
     all_instruments : List[instruments.Instrument]
-        List of all instruments that are available after merging all of the data
+        List of all instruments that are available after merging all the data
     output_path_with_time : str
         Path to the output directory for the plots, most likely the one
         generated in helikite.py with the current output time
@@ -628,7 +639,6 @@ def campaign_2023(
     # List to add plots to that will end up being exported
     figures_quicklook = []
     figures_qualitycheck = []
-
 
     figures_quicklook.append(generate_altitude_plot(
         df, altitude_col=altitude_col)
@@ -658,7 +668,6 @@ def campaign_2023(
         )
     )
 
-
     # Same with just pressure vars
     figures_qualitycheck.append(
         plot_scatter_from_variable_list_by_index(
@@ -666,36 +675,37 @@ def campaign_2023(
         )
     )
 
-    # Generate plots for qualitychecks based on their variable name in the
-    # merged dataframe. The two parameter Tuple[List[str], str] represents the
-    # list of variables, and the title given to the plot in the second parameter
+    ''' Generate plots for qualitychecks based on their variable name in the
+        merged dataframe. The two parameter Tuple[List[str], str] represents
+        the list of variables, and the title given to the plot in the second
+        parameter.
+    '''
     for variables, instrument in [
         ([f"{instruments.flight_computer.name}_vBat",
           f"{instruments.flight_computer.name}_TEMPbox"],
-          "Flight Computer"),
+         "Flight Computer"),
         (([f"{instruments.flight_computer.name}_TEMP1",
            f"{instruments.flight_computer.name}_TEMP2",
            f"{instruments.smart_tether.name}_T (deg C)"],
-           "Smart Tether"
-        ) if instruments.smart_tether in all_instruments else (
-        [f"{instruments.flight_computer.name}_TEMP1",
-         f"{instruments.flight_computer.name}_TEMP2"],
+         "Smart Tether") if instruments.smart_tether in all_instruments else (
+         [f"{instruments.flight_computer.name}_TEMP1",
+          f"{instruments.flight_computer.name}_TEMP2"],
          "Flight Computer")),  # Don't plot smart tether temp if not present
         ([f"{instruments.pops.name}_POPS_Flow"],
-          "POPS"
-        ) if instruments.pops in all_instruments else (None, None),
+         "POPS"
+         ) if instruments.pops in all_instruments else (None, None),
         ([f"{instruments.msems_readings.name}_msems_errs",
           f"{instruments.msems_readings.name}_mcpc_errs"],
-          "MSEMS Readings"
+         "MSEMS Readings"
          ) if instruments.msems_readings in all_instruments else (None, None),
         ([f"{instruments.pico.name}_win1Fit7",
           f"{instruments.pico.name}_win1Fit8"],
-          "Pico"
+         "Pico"
          ) if instruments.pico in all_instruments else (None, None),
         ([f"{instruments.ozone_monitor.name}_cell_temp",
           f"{instruments.ozone_monitor.name}_cell_pressure",
           f"{instruments.ozone_monitor.name}_flow_rate"],
-          "Ozone"
+         "Ozone"
          ) if instruments.ozone_monitor in all_instruments else (None, None),
     ]:
         if variables is not None:

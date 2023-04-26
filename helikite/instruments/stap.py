@@ -9,7 +9,6 @@ Time is is seconds since 1904-01-01 (weird starting date for Igor software)
 '''
 
 from .base import Instrument
-from typing import Dict, Any, List
 import pandas as pd
 
 
@@ -26,8 +25,13 @@ class STAP(Instrument):
         self,
         first_lines_of_csv
     ) -> bool:
-        if first_lines_of_csv[0] == "datetimes,sample_press_mbar,sample_temp_C,sigmab,sigmag,sigmar,sigmab_smth,sigmag_smth,sigmar_smth\n":
+        if first_lines_of_csv[0] == (
+            "datetimes,sample_press_mbar,sample_temp_C,sigmab,sigmag,sigmar,"
+            "sigmab_smth,sigmag_smth,sigmar_smth\n"
+        ):
             return True
+
+        return False
 
     def set_time_as_index(
         self,
@@ -47,6 +51,7 @@ class STAP(Instrument):
         df.set_index('DateTime', inplace=True)
 
         return df
+
 
 stap = STAP(
     dtype={

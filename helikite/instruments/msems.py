@@ -1,26 +1,32 @@
 '''
-4) mSEMS ->     mSEMS_103_220929_101343_INVERTED.txt (data to be plotted) (has pressure)
-        mSEMS_103_220929_101343_READINGS.txt (high resolution raw data with houskeeping info, error messages) (has pressure)
-        mSEMS_103_220929_101343_SCANS.txt (raw scan data with some houskeeping varaibles)
+4) mSEMS ->
+    mSEMS_103_220929_101343_INVERTED.txt (data to be plotted) (has pressure)
+    mSEMS_103_220929_101343_READINGS.txt (high resolution raw data with
+                                          houskeeping info, error messages)
+                                          (has pressure)
+    mSEMS_103_220929_101343_SCANS.txt (raw scan data with some houskeeping
+                                       varaibles)
 
-The mSEMS measures particles size distribution for particles from 8 nanometers to roughly 300 nm. The number of bins can vary. Typically we use 60 log-spaced bins but
-it can change. The time resolution depends on the amount of bins and the scan time but it is typically between 1 and 2 minutes. I mormally do not merge this data
-with the rest because of the courser time resolution and the amount of variables.
+The mSEMS measures particles size distribution for particles from 8 nanometers
+to roughly 300 nm. The number of bins can vary. Typically we use 60 log-spaced
+bins but it can change. The time resolution depends on the amount of bins and
+the scan time but it is typically between 1 and 2 minutes. I mormally do not
+merge this data with the rest because of the courser time resolution and the
+amount of variables.
 
-The file provides some information on temperature, pressure etc. It then gives the center diamater of each bin (i.e. Bin_Dia1, Bin_Dia2, ...) and then the numbe rof particles
-per bin (i.e. Bin_Conc1, Bin_Conc2, ...).
+The file provides some information on temperature, pressure etc. It then gives
+the center diamater of each bin (i.e. Bin_Dia1, Bin_Dia2, ...) and then the
+numbe rof particles per bin (i.e. Bin_Conc1, Bin_Conc2, ...).
 
--> because of the coarser time resolution, data is easier to be displayed as a timeseries (with the addition of total particle concentration and altitude).
+-> because of the coarser time resolution, data is easier to be displayed as a
+timeseries (with the addition of total particle concentration and altitude).
 
 Houskeeping file: Look at READINGS (look at msems_err / cpc_err)
 
 '''
 
 from .base import Instrument
-from typing import Dict, Any, List
 import pandas as pd
-import plotly.graph_objects as go
-from plotly.graph_objects import Figure
 import numpy as np
 
 
@@ -38,7 +44,8 @@ class MSEMSInverted(Instrument):
         bins = df.groupby('NumBins').all().index.to_list()
         if len(bins) != 1:
             # Check that there is only one single value.
-            raise ValueError("There are multiple bins in this dataset. Cannot proceed")
+            raise ValueError("There are multiple bins in this dataset. "
+                             "Cannot proceed")
         else:
             # Unpack the single value list to a single integer
             bins = bins[0]
@@ -52,13 +59,25 @@ class MSEMSInverted(Instrument):
         bin_diameter_log = np.log10(bin_diameter_average)
 
         # Calculate first and last bin limits
-        first_bin_radius = (bin_diameter_log[bin_diameter_columns[1]] - bin_diameter_log[bin_diameter_columns[0]])/2
-        first_bin_min = bin_diameter_log[bin_diameter_columns[0]] - first_bin_radius
+        first_bin_radius = (
+            bin_diameter_log[bin_diameter_columns[1]]
+            - bin_diameter_log[bin_diameter_columns[0]]
+        ) / 2
+        first_bin_min = (
+            bin_diameter_log[bin_diameter_columns[0]] - first_bin_radius
+        )
 
-        last_bin_radius = (bin_diameter_log[bin_diameter_columns[-1]] - bin_diameter_log[bin_diameter_columns[-2]])/2
-        last_bin_max = bin_diameter_log[bin_diameter_columns[-1]] + last_bin_radius
+        last_bin_radius = (
+            bin_diameter_log[bin_diameter_columns[-1]]
+            - bin_diameter_log[bin_diameter_columns[-2]]
+        ) / 2
 
-        # Create the bin limit columns and add the first limit column (so there are total n_bins + 1)
+        last_bin_max = (
+            bin_diameter_log[bin_diameter_columns[-1]] + last_bin_radius
+        )
+
+        # Create the bin limit columns and add the first limit column
+        # (so there are total n_bins + 1)
         bin_limit_columns = [f"Bin_Lim{i}" for i in range(1, bins+1)]
         bin_limit_columns.insert(0, "Bin_Lim0")
 
@@ -68,7 +87,11 @@ class MSEMSInverted(Instrument):
 
         # Calculate the bin limits for all but the first and last
         for i, col in enumerate(bin_limit_columns[1:-1]):
-            df[col] = bin_diameter_log[i] + (bin_diameter_log[i+1] - bin_diameter_log[i])/2
+            df[col] = (
+                bin_diameter_log[i]
+                + (bin_diameter_log[i+1] - bin_diameter_log[i])
+                / 2
+            )
 
         # Return values to the inverse of log10
         df[bin_limit_columns] = 10 ** df[bin_limit_columns]
@@ -82,9 +105,12 @@ class MSEMSInverted(Instrument):
         df['EndTime'] = pd.to_datetime(df['EndTime'])
 
         # The last row needs an end date, just add 1 minute
-        df.loc[df.index[-1], 'EndTime'] = df.loc[df.index[-1], 'StartTime'] + pd.DateOffset(minutes=1)
+        df.loc[df.index[-1], 'EndTime'] = (
+            df.loc[df.index[-1], 'StartTime'] + pd.DateOffset(minutes=1)
+        )
 
-        # Set the EndTime as one second less so that the bin end date does not equal the start of the next bin start
+        # Set the EndTime as one second less so that the bin end date does not
+        # equal the start of the next bin start
         df['EndTime'] += pd.DateOffset(seconds=-1)
 
         return df
@@ -94,7 +120,10 @@ class MSEMSInverted(Instrument):
         first_lines_of_csv
     ) -> bool:
         # To match "...INVERTED.txt" file
-        if "#Date\tTime\tTemp(C)\tPress(hPa)\tNumBins\tBin_Dia1\tBin_Dia2\tBin_Dia3" in first_lines_of_csv[0]:
+        if (
+            "#Date\tTime\tTemp(C)\tPress(hPa)\tNumBins\tBin_Dia1\t"
+            "Bin_Dia2\tBin_Dia3"
+        ) in first_lines_of_csv[0]:
             return True
 
         return False
@@ -117,6 +146,7 @@ class MSEMSInverted(Instrument):
 
         return df
 
+
 class MSEMSReadings(Instrument):
     # To match a "...READINGS.txt" file
     def __init__(
@@ -131,10 +161,13 @@ class MSEMSReadings(Instrument):
         self,
         first_lines_of_csv
     ) -> bool:
-        if ("#mSEMS" in first_lines_of_csv[0]
+        if (
+            "#mSEMS" in first_lines_of_csv[0]
             and "#YY/MM/DD" in first_lines_of_csv[31]
         ):
             return True
+
+        return False
 
     def set_time_as_index(
         self,
@@ -154,6 +187,7 @@ class MSEMSReadings(Instrument):
 
         return df
 
+
 class MSEMSScan(Instrument):
     # To match a "...SCAN.txt" file
     def __init__(
@@ -168,7 +202,8 @@ class MSEMSScan(Instrument):
         self,
         first_lines_of_csv
     ) -> bool:
-        if ("#mSEMS" in first_lines_of_csv[0]
+        if (
+            "#mSEMS" in first_lines_of_csv[0]
             and "#scan_conf" in first_lines_of_csv[31]
         ):
             return True
@@ -193,97 +228,99 @@ class MSEMSScan(Instrument):
 
         return df
 
+
 msems_scan = MSEMSScan(
     header=55,
     delimiter="\t",
     dtype={
-    "#YY/MM/DD": "str",
-    "HR:MN:SC": "str",
-    "scan_direction": "Int64",
-    "actual_max_dia": "Int64",
-    "scan_max_volts": "Float64",
-    "scan_min_volts": "Float64",
-    "sheath_flw_avg": "Float64",
-    "sheath_flw_stdev": "Float64",
-    "mcpc_smpf_avg": "Float64",
-    "mcpc_smpf_stdev": "Float64",
-    "press_avg": "Float64",
-    "press_stdev": "Float64",
-    "temp_avg": "Float64",
-    "temp_stdev": "Float64",
-    "sheath_rh_avg": "Float64",
-    "sheath_rh_stdev": "Float64",
-    "bin1": "Int64",
-    "bin2": "Int64",
-    "bin3": "Int64",
-    "bin4": "Int64",
-    "bin5": "Int64",
-    "bin6": "Int64",
-    "bin7": "Int64",
-    "bin8": "Int64",
-    "bin9": "Int64",
-    "bin10": "Int64",
-    "bin11": "Int64",
-    "bin12": "Int64",
-    "bin13": "Int64",
-    "bin14": "Int64",
-    "bin15": "Int64",
-    "bin16": "Int64",
-    "bin17": "Int64",
-    "bin18": "Int64",
-    "bin19": "Int64",
-    "bin20": "Int64",
-    "bin21": "Int64",
-    "bin22": "Int64",
-    "bin23": "Int64",
-    "bin24": "Int64",
-    "bin25": "Int64",
-    "bin26": "Int64",
-    "bin27": "Int64",
-    "bin28": "Int64",
-    "bin29": "Int64",
-    "bin30": "Int64",
-    "bin31": "Int64",
-    "bin32": "Int64",
-    "bin33": "Int64",
-    "bin34": "Int64",
-    "bin35": "Int64",
-    "bin36": "Int64",
-    "bin37": "Int64",
-    "bin38": "Int64",
-    "bin39": "Int64",
-    "bin40": "Int64",
-    "bin41": "Int64",
-    "bin42": "Int64",
-    "bin43": "Int64",
-    "bin44": "Int64",
-    "bin45": "Int64",
-    "bin46": "Int64",
-    "bin47": "Int64",
-    "bin48": "Int64",
-    "bin49": "Int64",
-    "bin50": "Int64",
-    "bin51": "Int64",
-    "bin52": "Int64",
-    "bin53": "Int64",
-    "bin54": "Int64",
-    "bin55": "Int64",
-    "bin56": "Int64",
-    "bin57": "Int64",
-    "bin58": "Int64",
-    "bin59": "Int64",
-    "bin60": "Int64",
-    "msems_errs": "Int64",
-    "mcpc_smpf": "Float64",
-    "mcpc_satf": "Float64",
-    "mcpc_cndt": "Float64",
-    "mcpc_satt": "Float64",
-    "mcpc_errs": "Int64",
-},
-export_order=710,
-pressure_variable='press_avg',
-cols_export=[],
-cols_housekeeping=[])
+        "#YY/MM/DD": "str",
+        "HR:MN:SC": "str",
+        "scan_direction": "Int64",
+        "actual_max_dia": "Int64",
+        "scan_max_volts": "Float64",
+        "scan_min_volts": "Float64",
+        "sheath_flw_avg": "Float64",
+        "sheath_flw_stdev": "Float64",
+        "mcpc_smpf_avg": "Float64",
+        "mcpc_smpf_stdev": "Float64",
+        "press_avg": "Float64",
+        "press_stdev": "Float64",
+        "temp_avg": "Float64",
+        "temp_stdev": "Float64",
+        "sheath_rh_avg": "Float64",
+        "sheath_rh_stdev": "Float64",
+        "bin1": "Int64",
+        "bin2": "Int64",
+        "bin3": "Int64",
+        "bin4": "Int64",
+        "bin5": "Int64",
+        "bin6": "Int64",
+        "bin7": "Int64",
+        "bin8": "Int64",
+        "bin9": "Int64",
+        "bin10": "Int64",
+        "bin11": "Int64",
+        "bin12": "Int64",
+        "bin13": "Int64",
+        "bin14": "Int64",
+        "bin15": "Int64",
+        "bin16": "Int64",
+        "bin17": "Int64",
+        "bin18": "Int64",
+        "bin19": "Int64",
+        "bin20": "Int64",
+        "bin21": "Int64",
+        "bin22": "Int64",
+        "bin23": "Int64",
+        "bin24": "Int64",
+        "bin25": "Int64",
+        "bin26": "Int64",
+        "bin27": "Int64",
+        "bin28": "Int64",
+        "bin29": "Int64",
+        "bin30": "Int64",
+        "bin31": "Int64",
+        "bin32": "Int64",
+        "bin33": "Int64",
+        "bin34": "Int64",
+        "bin35": "Int64",
+        "bin36": "Int64",
+        "bin37": "Int64",
+        "bin38": "Int64",
+        "bin39": "Int64",
+        "bin40": "Int64",
+        "bin41": "Int64",
+        "bin42": "Int64",
+        "bin43": "Int64",
+        "bin44": "Int64",
+        "bin45": "Int64",
+        "bin46": "Int64",
+        "bin47": "Int64",
+        "bin48": "Int64",
+        "bin49": "Int64",
+        "bin50": "Int64",
+        "bin51": "Int64",
+        "bin52": "Int64",
+        "bin53": "Int64",
+        "bin54": "Int64",
+        "bin55": "Int64",
+        "bin56": "Int64",
+        "bin57": "Int64",
+        "bin58": "Int64",
+        "bin59": "Int64",
+        "bin60": "Int64",
+        "msems_errs": "Int64",
+        "mcpc_smpf": "Float64",
+        "mcpc_satf": "Float64",
+        "mcpc_cndt": "Float64",
+        "mcpc_satt": "Float64",
+        "mcpc_errs": "Int64",
+    },
+    export_order=710,
+    pressure_variable='press_avg',
+    cols_export=[],
+    cols_housekeeping=[]
+)
 
 # To match a "...READINGS.txt" file
 msems_readings = MSEMSReadings(

@@ -2,13 +2,12 @@ import pytest
 import os
 import sys
 import datetime
-import pandas as pd
 
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from instruments import (
+from instruments import (  # noqa
     msems_scan, msems_readings, msems_inverted, smart_tether, flight_computer,
-    pops, stap, mcpc
+    pops, stap
 )
 
 
@@ -17,6 +16,7 @@ def campaign_data_location():
 
     return os.path.join(
         os.path.dirname(__file__), "resources", "campaigns", "20220929")
+
 
 @pytest.fixture
 def fc_data(campaign_data_location: str):
@@ -40,6 +40,7 @@ def st_data_fake_midnight():
     df = smart_tether.read_data()
 
     return df
+
 
 @pytest.fixture
 def campaign_file_paths_and_instruments(campaign_data_location):
@@ -69,6 +70,5 @@ def campaign_file_paths_and_instruments(campaign_data_location):
     instruments['smart_tether'] = smart_tether
     instruments['pops'] = pops
     instruments['stap'] = stap
-
 
     return instruments

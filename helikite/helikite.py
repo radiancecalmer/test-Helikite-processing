@@ -3,13 +3,9 @@ from processing import preprocess, sorting
 from constants import constants
 import instruments
 import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-import plotly.express as px
 import os
 import datetime
 import plots
-from functools import reduce
 import logging
 from typing import Dict, Any
 
@@ -117,11 +113,9 @@ def main(
         # Add tuple of df and export order to df merge list
         all_export_dfs.append((df, instrument_obj))
 
-
     preprocess.export_yaml_config(
         config,
-        os.path.join(output_path_with_time,
-                        constants.CONFIG_FILE)
+        os.path.join(output_path_with_time, constants.CONFIG_FILE)
     )
 
     # Sort the export columns in their numerical hierarchy order
@@ -164,6 +158,7 @@ def main(
     plots.campaign_2023(
         master_df, plot_props, all_instruments, output_path_with_time
     )
+
 
 if __name__ == '__main__':
     # If docker arg given, don't run main

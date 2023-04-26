@@ -1,7 +1,7 @@
 from pydantic import BaseSettings
 from pathlib import Path
-from typing import List
 import logging
+
 
 class Constants(BaseSettings):
     INPUTS_FOLDER: Path = Path.cwd().joinpath("inputs")
@@ -23,9 +23,10 @@ class Constants(BaseSettings):
     QUICKLOOK_PLOT_FILENAME: str = "helikite-quicklooks.html"
     QUALITYCHECK_PLOT_FILENAME: str = "helikite-qualitycheck.html"
     PLOT_LAYOUT_COMMON: dict = {
-        'font': {'size': 16,
-                 'family': 'Arial',
-        },
+        'font': {
+            'size': 16,
+            'family': 'Arial',
+            },
         'template': 'plotly_white',
         'height': 600
     }

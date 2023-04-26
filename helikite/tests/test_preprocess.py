@@ -1,17 +1,11 @@
-import pandas as pd
-import pytest
 import os
 import sys
-from io import StringIO
-import datetime
 
 # Append the root directory of your project to the system path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-
-from instruments import (
+from instruments import (  # noqa
     smart_tether, flight_computer, msems_inverted, msems_readings, msems_scan,
-    pops, stap, mcpc
+    pops, stap
 )
 
 
@@ -25,7 +19,6 @@ def test_detect_file(campaign_data_location: str):
             with open(full_path) as in_file:
                 # Read the first set of lines for headers
                 header_lines = [next(in_file) for x in range(50)]
-
 
             if filename == 'LOG_20220929.txt':
                 assert flight_computer.file_identifier(header_lines) is True
@@ -54,7 +47,7 @@ def test_detect_file_collisions(campaign_data_location: str):
                 header_lines = [next(in_file) for x in range(50)]
 
             for instrument in [flight_computer, msems_inverted, msems_readings,
-                            msems_scan, smart_tether, pops, stap]:
+                               msems_scan, smart_tether, pops, stap]:
                 instrument_detected = []
                 if instrument.file_identifier(header_lines) is True:
                     instrument_detected.append(instrument.name)
