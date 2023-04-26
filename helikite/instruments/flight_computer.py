@@ -115,9 +115,7 @@ class FlightComputer(Instrument):
 
         # Create a new column representing altitude above ground level
         # by subtracting starting altitude from calculated
-        df['Altitude_agl'] = (
-            df['Altitude'] - start_altitude if start_altitude else 0
-        )
+        df['Altitude_agl'] = df['Altitude'] - altitude
 
         return df
 

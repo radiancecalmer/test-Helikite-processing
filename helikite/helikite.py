@@ -120,12 +120,6 @@ def main(
 
     # Sort the export columns in their numerical hierarchy order and log
     all_export_dfs.sort(key=sorting.df_column_sort_key)
-    logger.info("Instruments will be merged together with this column order:")
-    logger.info("----------")
-    for df, inst in all_export_dfs:
-        logger.info(
-            f"Instrument: {inst.name:20}"
-            f"(Export order value: {inst.export_order})")
 
     master_export_cols = []
     master_housekeeping_cols = []
@@ -138,8 +132,10 @@ def main(
     master_housekeeping_cols += instrument.housekeeping_columns
 
     # Merge the rest
+    logger.info("Instruments will be merged together with this column order:")
     for df, instrument in all_export_dfs[1:]:
-        logger.info(f'Merging instrument: {instrument.name}')
+        logger.info(f'Merging instrument: {instrument.name:20} '
+                    f'(Export order value: {instrument.export_order})')
         master_df = master_df.merge(
             df, how="outer", left_index=True, right_index=True)
         master_export_cols += instrument.export_columns

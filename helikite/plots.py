@@ -51,11 +51,57 @@ def generate_grid_plot(
     df: pd.DataFrame,
     all_instruments: List[instruments.Instrument],
     altitude_col: str = "flight_computer_Altitude",
+    resample_seconds: int | None = None
 ) -> go.Figure:
+    ''' Generates a 4x3 plot of quicklooks variables from several instruments
+
+    Resample values to a time interval in seconds is possible, to decrease
+    the total count of points in the plot. This is useful for large datasets
+    where the plot is too slow to render, or too many points to be useful.
+
+    The resampling will not happen on the wind direction due to the nature
+    of the data. The wind direction is a circular variable, and resampling
+    will not work as expected.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The dataframe containing the data to plot
+    all_instruments : List[instruments.Instrument]
+        A list of all instruments to plot
+    altitude_col : str, optional
+        The column name of the altitude variable, by default
+        "flight_computer_Altitude"
+    resample_seconds : int, optional
+        The number of seconds to resample the data to, by default None
+    '''
 
     colors = generate_normalised_colours(df)
-
     fig = make_subplots(rows=3, cols=4, shared_yaxes=False)
+
+    # Always plot wind degrees with original data (not resampled)
+    if instruments.smart_tether in all_instruments:
+        fig.add_trace(go.Scattergl(
+            x=df["smart_tether_Wind (degrees)"],
+            y=df[altitude_col],
+            name="Wind direction (Smart Tether)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                showscale=False
+            )),
+            row=1, col=4)
+
+    # Resample the data, and replace the dataframe with the resampled version
+    if resample_seconds is not None:
+        logger.info(
+            "Resampling grid-plot data at the mean of "
+            f"{resample_seconds} seconds "
+        )
+        df = df.resample(
+            f'{int(resample_seconds)}S').mean(numeric_only=True)
+        colors = generate_normalised_colours(df)
 
     # Add the same temperature plots to all three rows
     for row_id in range(1, 4):
@@ -173,20 +219,6 @@ def generate_grid_plot(
     # Add smart tether data if it exists
     if instruments.smart_tether in all_instruments:
         fig.add_trace(go.Scattergl(
-            x=df["smart_tether_%RH"],
-            y=df[altitude_col],
-            name="Relative Humidity (Smart Tether)",
-            mode="markers",
-            marker=dict(
-                color=colors,
-                size=constants.PLOT_MARKER_SIZE,
-                line_width=2,
-                showscale=False,
-                symbol="diamond-open"
-            )),
-            row=1, col=2)
-
-        fig.add_trace(go.Scattergl(
             x=df["smart_tether_Wind (m/s)"],
             y=df[altitude_col],
             name="Wind speed (Smart Tether)",
@@ -199,16 +231,18 @@ def generate_grid_plot(
             row=1, col=3)
 
         fig.add_trace(go.Scattergl(
-            x=df["smart_tether_Wind (degrees)"],
+            x=df["smart_tether_%RH"],
             y=df[altitude_col],
-            name="Wind direction (Smart Tether)",
+            name="Relative Humidity (Smart Tether)",
             mode="markers",
             marker=dict(
                 color=colors,
                 size=constants.PLOT_MARKER_SIZE,
-                showscale=False
+                line_width=2,
+                showscale=False,
+                symbol="diamond-open"
             )),
-            row=1, col=4)
+            row=1, col=2)
 
     # Add STAP data if it exists
     if instruments.stap in all_instruments:
@@ -319,7 +353,12 @@ def generate_grid_plot(
     layout = constants.PLOT_LAYOUT_COMMON
     layout['height'] = 1000
 
-    fig.update_layout(**layout,
+    if resample_seconds is None:
+        title = "Measurements"
+    else:
+        title = f"Measurements (resampled to {resample_seconds} seconds)"
+
+    fig.update_layout(**layout, title=title,
                       coloraxis=dict(colorbar=dict(orientation='h', y=-0.15)),
                       )
 
@@ -506,6 +545,7 @@ def write_plots_to_html(
 
 def generate_altitude_plot(
     df: pd.DataFrame,
+    at_ground_level: bool,
     altitude_col: str = "flight_computer_Altitude",
 ) -> go.Figure:
 
@@ -525,10 +565,15 @@ def generate_altitude_plot(
         )
     )
 
+    if at_ground_level:
+        title = "Altitude (ground level)"
+    else:
+        title = "Altitude (sea level)"
+
     # Update background to white and add black border
     fig.update_layout(
         **constants.PLOT_LAYOUT_COMMON,
-        title="Altitude",
+        title=title,
         xaxis=dict(
             title="Time",
             mirror=True,
@@ -551,6 +596,7 @@ def generate_altitude_plot(
 def generate_altitude_concentration_plot(
     df: pd.DataFrame,
     bins: List[Tuple[str, str, str]],
+    at_ground_level: bool,
     height: int = 400,
     altitude_col: str = "flight_computer_Altitude",
 ) -> go.Figure:
@@ -560,7 +606,7 @@ def generate_altitude_concentration_plot(
     calculated from.
     '''
 
-    fig = generate_altitude_plot(df, altitude_col)
+    fig = generate_altitude_plot(df, at_ground_level, altitude_col)
 
     # Set line markers to single solid colour
     fig.update_traces(marker=dict(color='rgb(31, 119, 180)'))
@@ -641,10 +687,12 @@ def campaign_2023(
     figures_qualitycheck = []
 
     figures_quicklook.append(generate_altitude_plot(
-        df, altitude_col=altitude_col)
+        df, at_ground_level=plot_props["altitude_ground_level"],
+        altitude_col=altitude_col)
     )
     figures_quicklook.append(generate_grid_plot(
-        df, all_instruments, altitude_col=altitude_col)
+        df, all_instruments, altitude_col=altitude_col,
+        resample_seconds=plot_props['grid']['resample_seconds'])
     )
 
     # Create a list of instruments with pressure housekeeping variables
@@ -731,7 +779,9 @@ def campaign_2023(
         ]
         figures_quicklook.append(
             generate_altitude_concentration_plot(
-                df, msems_bins, altitude_col=altitude_col
+                df, msems_bins,
+                at_ground_level=plot_props['altitude_ground_level'],
+                altitude_col=altitude_col
             )
         )
 
