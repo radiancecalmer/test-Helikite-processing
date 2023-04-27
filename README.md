@@ -1,8 +1,8 @@
 # helikite
 
-This library aims to support Helikite campaigns by unifying data collected from fieldwork
-and producing quicklooks on recorded data from instruments to assist with instrument
-housekeeping and quality control.
+This library aims to support Helikite campaigns by unifying data collected from
+fieldwork and producing quicklooks on recorded data from instruments to assist
+with instrument housekeeping and quality control.
 
 ## Table of Contents
 1. [Getting started](#getting-started)
@@ -19,42 +19,45 @@ housekeeping and quality control.
 
 There are three stages to the application. These are:
 
-1. (**Optional**: This will happen in the next step if the config file has not been created not exist)
+1. (**Optional**: This will happen in the next step if the config file has not
+   been created not exist)
 
-   Generate a config file in the `input` folder. This writes out a configuration
-   file that the application will use to refer to instrument files and their individual
-   configurations that have been defined in this library. This only needs to be run if
-   there is no config file that exists in the input folder already, or if more instruments
-   need to be added.
+   Generate a config file in the `input` folder. This writes out a
+   configuration file that the application will use to refer to instrument
+   files and their individual configurations that have been defined in this
+   library. This only needs to be run if there is no config file that exists in
+   the input folder already, or if more instruments need to be added.
 
    **Note**: It will overwrite the config in the `input` folder.
 
-   Once generated, the user may remove instruments that should not be considered in the
-   preprocessing or processing stages (stage 2 and 3).
+   Once generated, the user may remove instruments that should not be
+   considered in the preprocessing or processing stages (stage 2 and 3).
 
    This stage's command-line argument is: `generate_config`.
 
-2. Scanning the input folder of raw instrument files and assigning them to the instrument
-   configurations in the config file that were generated in stage 1. The configuration file
-   is updated with the file location, and other instrument-specific metadata such as scan
-   date (should it be located in the file header and not in a field -- see _Smart Tether_
-   configuration)
+2. Scanning the input folder of raw instrument files and assigning them to the
+   instrument configurations in the config file that were generated in stage 1.
+   The configuration file is updated with the file location, and other
+   instrument-specific metadata such as scan date (should it be located in the
+   file header and not in a field -- see _Smart Tether_ configuration)
 
    This stage's command-line argument is: `preprocess`.
 
-   After this stage is complete, the user may edit the generated `config.yaml` by
-   removing instruments or setting variables that will be used by the next stage.
+   After this stage is complete, the user may edit the generated `config.yaml`
+   by removing instruments or setting variables that will be used by the next
+   stage.
 
-3. Processing the input data files based on the config file in the same `input` folder,
-   normalising the timestamps of each record, saving their outputs and generating plots
-   in the `output` folder.
+3. Processing the input data files based on the config file in the same
+   `input` folder, normalising the timestamps of each record, saving their
+   outputs and generating plots in the `output` folder.
 
-   Each time the application runs, it will create a UTC timestamped folder in the `output`
-   folder with the processed input files, plots and a copy of the configuration file used.
-   Therefore, the configuration file can be edited many times and running this step will
-   not affect any previous output.
+   Each time the application runs, it will create a UTC timestamped folder in
+   the `output` folder with the processed input files, plots and a copy of the
+   configuration file used. Therefore, the configuration file can be edited
+   many times and running this step will not affect any previous output.
 
-   This is the default behaviour of the application (no command-line arguments).
+   This is the default behaviour of the application (no command-line
+   arguments).
 
 ## Docker
 
@@ -140,7 +143,8 @@ Run the following commands as needed:
   make preprocess
   ```
 
-- To generate plots and processed input files, which will be placed in a timestamped directory within the `outputs` folder:
+- To generate plots and processed input files, which will be placed in a
+timestamped directory within the `outputs` folder:
 
   ```
   make process
@@ -159,6 +163,22 @@ iterating through the instantiated classes that are imported in
 `helikite/instruments/__init__.py`. Therefore, creating a new class of parent
 `Instrument`, and importing it into `__init__.py` will allow it to be
 included in the project.
+
+Firstly, the class should inherit the `Instrument` class and provide a name
+for the instrument in `self.name`. This name is the prefix given to the
+instrument in column outputs, and how the application will handle it. It should
+be unique to all other instruments. Below is the example for the `MCPC`
+instrument.
+
+``` python
+def __init__(
+   self,
+   *args,
+   **kwargs
+) -> None:
+   super().__init__(*args, **kwargs)
+   self.name = 'mcpc'
+```
 
 The minimum functions that should be defined in each instrument are the
 `file_identifier()` and `set_time_as_index()` functions. The
@@ -219,7 +239,7 @@ def set_time_as_index(
    return df
 ```
 
-Each instrument will define its own schema which can be complicated, so it is
+Each instrument manufacturer will define its own data structure, so it is
 up to these functions to define the best way to handle them. One example here
 is the `smart_tether` instrument which only includes timestamps in the data,
 and a date in the metadata provided in the header. This introduces two
@@ -292,7 +312,61 @@ def set_time_as_index(
 
    return df
 ```
+## Instantiating the instrument
 
+After defining the class functions, the instrument should be instantiated
+with variables defining the datatype of each column, and specific for reading
+the data.
+
+The below example is the instantiated object for the `STAP` instrument.
+
+```python
+# helikite/instruments/stap.py
+
+stap = STAP(
+    dtype={
+        "datetimes": "Int64",
+        "sample_press_mbar": "Float64",
+        "sample_temp_C": "Float64",
+        "sigmab": "Float64",
+        "sigmag": "Float64",
+        "sigmar": "Float64",
+        "sigmab_smth": "Float64",
+        "sigmag_smth": "Float64",
+        "sigmar_smth": "Float64",
+    },
+    na_values=["NAN"],
+    export_order=500,
+    cols_export=["sample_press_mbar", "sample_temp_C", "sigmab",
+                 "sigmag", "sigmar", "sigmab_smth", "sigmag_smth",
+                 "sigmar_smth"],
+    cols_housekeeping=["sample_press_mbar", "sample_temp_C", "sigmab",
+                       "sigmag", "sigmar", "sigmab_smth", "sigmag_smth",
+                       "sigmar_smth"],
+    pressure_variable='sample_press_mbar')
+```
+
+These class variables define specific representations of the data for the
+helikite application. The list of these can be found in the base `Instrument`
+class in `helikite/instruments/base.py`. As the data is read in with the
+pandas `read_csv()` function, many are provided to pass to this function.
+If a more complicated situation is required, the `read_data()` function can be
+overridden much like what was done in the previous steps.
+
+Some noteworthy variables here are:
+- `export_order`: This defined in a hierarchy where the data should be placed
+in the export files. The value will be used in a sort function which will sort
+from `0` to `inf.` where 0 is the first set of data to be placed in the CSV
+export. If no number is defined it it placed at the end.
+- `cols_export` and `cols_housekeeping`: This list of variables will the ones
+included in the final aggregated data exports for the data and housekeeping
+files respectively. If none are added here, the data will not be considered to
+be added to these files.
+- `pressure_variable`: Adding the column name of the instrument's pressure
+reading will add it to the pressure plots in the qualitycheck plots.
+
+Finally, add this instantiated instrument to the `__init__.py` file in
+`helikite/instruments`.
 ## Configuration
 There are three locations where the application defines the parameters to
 execute. There are the instrument configuration parameters defined in the
@@ -310,3 +384,61 @@ arguments for each instrument, including adjustments for time and location
 of the data. It also holds parameters for plotting and trimming the data. The
 generation of this file is explained in the [getting started](#getting-started)
 section above.
+
+Below is an example of a `config.yaml` file generated and adjusted:
+```yaml
+global:                             # Global parameters
+  time_trim:                        # The start/end times to trim the data to
+    end: 2022-09-29 12:34:36        # These can both be null, to not trim
+    start: 2022-09-29 10:21:58
+ground_station:     # Provides values for altitude calculation
+  altitude: null    # Altitude at start (if null, this will be 0)
+  pressure: null    # Pressure at start (if null, averages from first 10s)
+  temperature: 7.8  # Pressure at start (if null, averages from first 10s)
+instruments:
+  filter:
+    config: filter
+    date: null
+    file: /app/inputs/220209A3.TXT  # Location of the data
+    pressure_offset: null
+    time_offset:                    # Modifies the timestamp in the data
+      hour: 5555
+      minute: 0
+      second: 0
+
+  ...  ## All the other instruments
+
+  smart_tether:
+    config: smart_tether
+    date: 2022-09-29 00:00:00       # Date provided by preprocessing
+    file: /app/inputs/LOG_20220929_A.csv
+    pressure_offset: 2.5
+    time_offset:
+      hour: 0
+      minute: 0
+      second: -26
+plots:
+  altitude_ground_level: false      # True: Plots from ground, false: sea level
+  grid:
+    resample_seconds: 60            # Resamples the plot data to n seconds
+  heatmap:                          # Alters the colour scale for the heatmaps
+    msems_inverted:
+      zmax: null                    # Max value of colour scale
+      zmid: null                    # Midpoint of colour scale
+      zmin: null                    # Min value of the colour scale
+    msems_scan:
+      zmax: null
+      zmid: null
+      zmin: null
+  msems_readings_averaged:  # Periods to generate averaged MSEMS plots
+    Period1:                           # Name here becomes title given to plot
+      log_y: false                     # Log scale enabled/disabled on y-axis
+      time_end: 2022-09-29 11:13:00    # Timestamp of the end of the period
+      time_start: 2022-09-29 11:07:00  # Timestamp of the start of the period
+    Period2:
+      log_y: false
+      time_end: 2022-09-29 11:44:30
+      time_start: 2022-09-29 11:40:00
+```
+
+In general, this does not need to be altered to process the data.
