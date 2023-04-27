@@ -50,7 +50,10 @@ def preprocess():
 
         with open(full_path) as in_file:
             # Read the first set of lines for headers
-            header_lines = [next(in_file) for x in range(50)]
+            header_lines = [
+                next(in_file)
+                for x in range(constants.QTY_LINES_TO_IDENTIFY_INSTRUMENT)
+            ]
             for name, obj in instrument_objects.items():
                 if obj.file_identifier(header_lines):
                     # Increment count of matches and also add match to list

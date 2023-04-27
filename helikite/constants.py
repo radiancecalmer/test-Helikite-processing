@@ -14,6 +14,7 @@ class Constants(BaseSettings):
     LOGFILE_NAME: str = "helikite.log"
     LOGLEVEL_CONSOLE: str = "INFO"
     LOGLEVEL_FILE: str = "DEBUG"
+    QTY_LINES_TO_IDENTIFY_INSTRUMENT: int = 50
 
     # Column names
     ALTITUDE_GROUND_LEVEL_COL: str = "flight_computer_Altitude_agl"
