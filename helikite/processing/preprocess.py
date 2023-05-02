@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
 import yaml
-import glob
 from constants import constants
 import instruments
-import importlib
 import os
 from typing import Any, Dict
 import logging
@@ -18,12 +16,14 @@ def get_columns_from_dtype(instrument: instruments.base.Instrument):
 
     return list(instrument.dtype)
 
+
 def read_yaml_config(file_path):
     # Open YAML
     with open(file_path, 'r') as in_yaml:
         yaml_config = yaml.load(in_yaml, Loader=yaml.Loader)
 
     return yaml_config
+
 
 def preprocess():
     yaml_config = read_yaml_config(
@@ -36,7 +36,6 @@ def preprocess():
     for instrument, props in yaml_config['instruments'].items():
         instrument_objects[instrument] = getattr(instruments, props['config'])
 
-
     for filename in os.listdir(constants.INPUTS_FOLDER):
         # Ignore any yaml or keep files
         if filename.endswith('yaml') or filename.endswith('.keep'):
@@ -45,13 +44,16 @@ def preprocess():
         full_path = os.path.join(constants.INPUTS_FOLDER, filename)
         logger.info(f"Determining instrument for {filename:40} ... ")
 
-        # Hold a list of name matches as to not match more than once for safeguard
+        # Hold a list of name matches as to not match more than once
         successful_matches = []
         instrument_match_count = 0  # Count how many matches, err if > 0
 
         with open(full_path) as in_file:
             # Read the first set of lines for headers
-            header_lines = [next(in_file) for x in range(50)]
+            header_lines = [
+                next(in_file)
+                for x in range(constants.QTY_LINES_TO_IDENTIFY_INSTRUMENT)
+            ]
             for name, obj in instrument_objects.items():
                 if obj.file_identifier(header_lines):
                     # Increment count of matches and also add match to list
@@ -91,6 +93,7 @@ def preprocess():
                        os.path.join(constants.INPUTS_FOLDER,
                                     constants.CONFIG_FILE))
 
+
 def print_preprocess_stats(yaml_config):
     found = []
     not_found = []
@@ -103,6 +106,7 @@ def print_preprocess_stats(yaml_config):
     logger.info("File preprocessing statistics:")
     logger.info(f"Missing: {len(not_found)}: {', '.join(not_found)}")
     logger.info(f"Found:   {len(found)}: {', '.join(found)}")
+
 
 def export_yaml_config(yaml_config, out_location=constants.CONFIG_FILE):
     logger.info(f"Writing YAML config to {out_location}")
@@ -139,9 +143,17 @@ def generate_config(
             'start': None,
             'end': None,
         },
-        'altitude': 0
+    }
+    yaml_config['ground_station'] = {
+        'altitude': None,
+        'temperature': None,
+        'pressure': None
     }
     yaml_config['plots'] = {
+        'altitude_ground_level': False,
+        'grid': {
+            'resample_seconds': None
+        },
         'heatmap': {
             'msems_inverted': {
                 'zmin': None,
@@ -154,7 +166,13 @@ def generate_config(
                 'zmid': None,
             },
         },
-        'msems_readings_averaged': None
+        'msems_readings_averaged': {
+            'Title1': {
+                'time_start': None,
+                'time_end': None,
+                'log_y': False,
+            }
+        }
     }
 
     for instrument, obj in instrument_objects:

@@ -5,22 +5,25 @@
 Data from the onboard microcontroller. Resolution: 1 sec
 DateTime in seconds since 1970-01-01 (to be verified)
 
-Variables to keep: DateTime, P_baro, CO2, TEMP1, TEMP2, TEMPsamp, RH1, RH2, RHsamp, mFlow
+Variables to keep: DateTime, P_baro, CO2, TEMP1, TEMP2, TEMPsamp, RH1, RH2,
+                   RHsamp, mFlow
 Houskeeping variables: TEMPbox, vBat
 '''
 
 from instruments.base import Instrument
-from typing import Dict, Any, List
-import plotly.graph_objects as go
-from plotly.graph_objects import Figure
-import plotly.express as px
 import pandas as pd
 from processing.conversions import pressure_to_altitude
 from io import StringIO
-import csv
+import logging
+from constants import constants
 
 
-CSV_HEADER = "SBI,DateTime,PartCon,CO2,P_baro,TEMPbox,mFlow,TEMPsamp,RHsamp,TEMP1,RH1,TEMP2,RH2,vBat\n"
+# Define logger for this file
+logger = logging.getLogger(__name__)
+logger.setLevel(constants.LOGLEVEL_CONSOLE)
+
+CSV_HEADER = "SBI,DateTime,PartCon,CO2,P_baro,TEMPbox,mFlow,TEMPsamp,RHsamp," \
+             "TEMP1,RH1,TEMP2,RH2,vBat\n"
 
 
 class FlightComputer(Instrument):
@@ -39,26 +42,80 @@ class FlightComputer(Instrument):
         if first_lines_of_csv[0] == CSV_HEADER:
             return True
 
+        return False
+
     def data_corrections(
         self,
         df: pd.DataFrame,
         *,
-        start_altitude: float = 0
+        start_altitude: float | None = None,
+        start_pressure: float | None = None,
+        start_temperature: float | None = None,
+        start_duration_seconds: int = 10,
+
     ) -> pd.DataFrame:
 
         # Create altitude column by using average of first 10 seconds of data
+        if start_pressure is None or start_temperature is None:
+            try:
+                first_period = df.loc[
+                    df.index[0]:df.index[0] + pd.Timedelta(
+                        seconds=start_duration_seconds)
+                ]
 
-        first_10s = df.loc[
-            df.index[0]:df.index[0] + pd.Timedelta(seconds=10)
-        ]
-        average_first_10s = first_10s.mean(numeric_only=True)
+                averaged_sample = first_period.mean(numeric_only=True)
+            except IndexError as e:
+                logger.error(
+                    "There is not enough data in the flight computer to "
+                    f"measure the first {start_duration_seconds} seconds for "
+                    "pressure and temperature in order to calculate altitude. "
+                    "Data only available for time "
+                    f"range: {self.time_range[0]} to {self.time_range[1]}. "
+                    "To bypass this, input values for ground temperature and "
+                    "pressure in the config file."
+                )
+                raise e
 
+        if start_pressure is None:
+            pressure = round(averaged_sample[self.pressure_variable], 2)
+            logger.info(
+                f"No defined ground station pressure. Using estimate from "
+                f"first {start_duration_seconds} seconds of data. Calculated "
+                f"to: {pressure} (Flight Computer: {self.pressure_variable})"
+            )
+        else:
+            pressure = start_pressure
+            logger.info(
+                f"Pressure at start defined in config as: {pressure}"
+            )
+
+        if start_temperature is None:
+            temperature = round(averaged_sample.TEMP1, 2)
+            logger.info(
+                f"No defined ground station temperature. Using estimate from "
+                f"first {start_duration_seconds} seconds of data. Calculated "
+                f"to: {temperature} (Flight Computer: TEMP1)"
+            )
+        else:
+            temperature = start_temperature
+            logger.info(
+                f"Temperature at start defined in config as: {temperature}"
+            )
+
+        altitude = start_altitude if start_altitude else 0
+        logger.info(f"Altitude at start set to: {altitude}")
+
+        # Calculate altitude above mean sea level
         df['Altitude'] = df[self.pressure_variable].apply(
             pressure_to_altitude,
-            pressure_at_start=average_first_10s[self.pressure_variable],
-            temperature_at_start=average_first_10s.TEMP1,
-            altitude_at_start=start_altitude
+            pressure_at_start=pressure,
+            temperature_at_start=temperature,
+            altitude_at_start=altitude
         )
+
+        # Create a new column representing altitude above ground level
+        # by subtracting starting altitude from calculated
+        df['Altitude_agl'] = df['Altitude'] - altitude
 
         return df
 
@@ -78,79 +135,6 @@ class FlightComputer(Instrument):
         df.set_index('DateTime', inplace=True)
 
         return df
-
-    # def create_plots(
-    #     self,
-    #     df: pd.DataFrame
-    # ) -> List[Figure | None]:
-    #     figlist = []
-    #     fig = go.Figure()
-
-    #     # # Add TEMPBox
-    #     # fig.add_trace(
-    #     #     go.Scatter(
-    #     #         x=df.index,
-    #     #         y=df.TEMPbox,
-    #     #         name="TEMPBox"))
-
-    #     # # Add TEMPBox
-    #     # fig.add_trace(
-    #     #     go.Scatter(
-    #     #         x=df.index,
-    #     #         y=df.vBat,
-    #     #         name="vBat",
-    #     #         ))
-
-    # #    # Add TEMPBox
-    # #     fig.add_trace(
-    # #         go.Scatter(
-    # #             x=df.index,
-    # #             y=df.P_baro,
-    # #             name="P_baro"))
-
-    #     fig.update_layout(title="Flight Computer")
-
-    #     figlist.append(fig)
-
-
-    #     fig = go.Figure()
-
-    #     # Add TEMPBox
-    #     fig.add_trace(
-    #         go.Scatter(
-    #             x=df.index,
-    #             y=df.Altitude,
-    #             name="TEMPBox"))
-
-    #     fig.update_layout(title="Altitude")
-
-    #     figlist.append(fig)
-
-    #     # Plot these vars over pressure
-    #     for var in ['CO2', 'TEMP1', 'TEMP2', 'TEMPsamp', 'RH1', 'RH2']:
-    #         fig = go.Figure()
-
-    #         color_scale = px.colors.sequential.Rainbow
-    #         normalized_index = (df.index - df.index.min()) / (df.index.max() - df.index.min())
-    #         colors = [color_scale[int(x * (len(color_scale)-1))] for x in normalized_index]
-
-    #         # Add CO2
-    #         fig.add_trace(
-    #             go.Scatter(
-    #                 x=df[var],
-    #                 y=df.P_baro,
-    #                 name=var,
-    #                 mode="markers",
-    #                 marker=dict(
-    #                     color=colors,
-    #                     size=2,
-    #                     showscale=True
-    #                 )))
-
-    #         fig.update_layout(title=var)
-    #         figlist.append(fig)
-
-    #     return figlist
 
     def read_data(
         self
@@ -208,10 +192,10 @@ flight_computer = FlightComputer(
     },
     na_values=["NA", "-9999.00"],
     comment="#",
-    cols_export=["Altitude", "P_baro", "CO2", "TEMP1", "TEMP2",
+    cols_export=["Altitude", "Altitude_agl", "P_baro", "CO2", "TEMP1", "TEMP2",
                  "TEMPsamp", "RH1", "RH2", "RHsamp", "mFlow"],
-    cols_housekeeping=['Altitude', 'SBI', 'PartCon', 'CO2', 'P_baro', 'TEMPbox',
-                       'mFlow', 'TEMPsamp', 'RHsamp', 'TEMP1', 'RH1', 'TEMP2',
-                       'RH2', 'vBat'],
+    cols_housekeeping=['Altitude', "Altitude_agl", 'SBI', 'PartCon', 'CO2',
+                       'P_baro', 'TEMPbox', 'mFlow', 'TEMPsamp', 'RHsamp',
+                       'TEMP1', 'RH1', 'TEMP2', 'RH2', 'vBat'],
     export_order=100,
     pressure_variable='P_baro')

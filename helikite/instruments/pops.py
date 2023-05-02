@@ -1,24 +1,24 @@
 '''
 3) POPS ->  HK_20220929x001.csv (has pressure)
 
-The POPS is an optical particle counter. It provides information on the particle number concentration (how many particles per cubic centimeter)
-and the size distribution for particles larger than 180 nm roughly. Resolution: 1 sec
+The POPS is an optical particle counter. It provides information on the
+particle number concentration (how many particles per cubic centimeter)
+and the size distribution for particles larger than 180 nm roughly.
+Resolution: 1 sec
 
 Important variables to keep:
 DateTime, P, POPS_Flow, b0 -> b15
 
-PartCon needs to be re-calculated by adding b3 to b15 and deviding by averaged POPS_Flow
-(b0 -> b15 can be converted to dN/dlogDp values with conversion factors I have)
+PartCon needs to be re-calculated by adding b3 to b15 and deviding by averaged
+POPS_Flow (b0 -> b15 can be converted to dN/dlogDp values with conversion
+factors I have)
 
 Housekeeping variables to look at:
 POPS_flow -> flow should be just below 3, and check for variability increase
 '''
 
 from .base import Instrument
-from typing import Dict, Any, List
 import pandas as pd
-import plotly.graph_objects as go
-from plotly.graph_objects import Figure
 
 
 class POPS(Instrument):
@@ -34,8 +34,16 @@ class POPS(Instrument):
         self,
         first_lines_of_csv
     ) -> bool:
-        if first_lines_of_csv[0] == "DateTime, Status, PartCt, PartCon, BL, BLTH, STD, P, TofP, POPS_Flow, PumpFB, LDTemp, LaserFB, LD_Mon, Temp, BatV, Laser_Current, Flow_Set,PumpLife_hrs, BL_Start, TH_Mult, nbins, logmin, logmax, Skip_Save, MinPeakPts,MaxPeakPts, RawPts,b0,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,b12,b13,b14,b15\n":
+        if first_lines_of_csv[0] == (
+            "DateTime, Status, PartCt, PartCon, BL, BLTH, STD, P, TofP, "
+            "POPS_Flow, PumpFB, LDTemp, LaserFB, LD_Mon, Temp, BatV, "
+            "Laser_Current, Flow_Set,PumpLife_hrs, BL_Start, TH_Mult, nbins, "
+            "logmin, logmax, Skip_Save, MinPeakPts,MaxPeakPts, RawPts,b0,b1,"
+            "b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,b12,b13,b14,b15\n"
+        ):
             return True
+
+        return False
 
     def set_time_as_index(
         self,
@@ -47,7 +55,6 @@ class POPS(Instrument):
         '''
 
         df['DateTime'] = pd.to_datetime(df['DateTime'], unit='s')
-        # df.drop(columns=["date", "time"], inplace=True)
 
         # Round the milliseconds to the nearest second
         df['DateTime'] = pd.to_datetime(df.DateTime).round('s')
@@ -60,7 +67,7 @@ class POPS(Instrument):
     def data_corrections(
         self,
         df: pd.DataFrame,
-        **kwargs
+        *args, **kwargs
     ) -> pd.DataFrame:
 
         df.columns = df.columns.str.strip()
@@ -74,25 +81,6 @@ class POPS(Instrument):
 
         return df
 
-    # def create_plots(
-    #     self,
-    #     df: pd.DataFrame
-    # ) -> List[Figure | None]:
-    #     figlist = []
-    #     fig = go.Figure()
-
-    #     for var in ["POPS_Flow"]:
-    #         fig.add_trace(
-    #         go.Scatter(
-    #             x=df.index,
-    #             y=df[var],
-    #             name=var))
-
-    #     fig.update_layout(title="POPS")
-
-    #     figlist.append(fig)
-
-    #     return figlist
 
 pops = POPS(
     dtype={
@@ -140,16 +128,19 @@ pops = POPS(
         "b13": "Int64",
         "b14": "Int64",
         "b15": "Int64",
-        },
-        export_order=400,
-        cols_export=["P", "PartCon_186", "POPS_Flow", "b0",
-                     "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8",
-                     "b9", "b10", "b11", "b12", "b13", "b14", "b15"],
-        cols_housekeeping=[
-            "Status", "PartCt", "PartCon_186", "BL", "BLTH", "STD", "P", "TofP",
-            "POPS_Flow", "PumpFB", "LDTemp", "LaserFB", "LD_Mon", "Temp",
-            "BatV", "Laser_Current", "Flow_Set", "PumpLife_hrs", "BL_Start",
-            "TH_Mult", "nbins", "logmin", "logmax", "Skip_Save", "MinPeakPts",
-            "MaxPeakPts", "RawPts", "b0", "b1", "b2", "b3", "b4", "b5", "b6",
-            "b7", "b8", "b9", "b10", "b11", "b12", "b13", "b14", "b15"],
-        pressure_variable='P')
+    },
+    export_order=400,
+    cols_export=[
+        "P", "PartCon_186", "POPS_Flow", "b0",
+        "b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8",
+        "b9", "b10", "b11", "b12", "b13", "b14", "b15"
+    ],
+    cols_housekeeping=[
+        "Status", "PartCt", "PartCon_186", "BL", "BLTH", "STD", "P", "TofP",
+        "POPS_Flow", "PumpFB", "LDTemp", "LaserFB", "LD_Mon", "Temp",
+        "BatV", "Laser_Current", "Flow_Set", "PumpLife_hrs", "BL_Start",
+        "TH_Mult", "nbins", "logmin", "logmax", "Skip_Save", "MinPeakPts",
+        "MaxPeakPts", "RawPts", "b0", "b1", "b2", "b3", "b4", "b5", "b6",
+        "b7", "b8", "b9", "b10", "b11", "b12", "b13", "b14", "b15"
+    ],
+    pressure_variable='P')

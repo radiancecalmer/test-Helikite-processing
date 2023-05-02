@@ -1,7 +1,7 @@
 from pydantic import BaseSettings
 from pathlib import Path
-from typing import List
 import logging
+
 
 class Constants(BaseSettings):
     INPUTS_FOLDER: Path = Path.cwd().joinpath("inputs")
@@ -14,14 +14,20 @@ class Constants(BaseSettings):
     LOGFILE_NAME: str = "helikite.log"
     LOGLEVEL_CONSOLE: str = "INFO"
     LOGLEVEL_FILE: str = "DEBUG"
+    QTY_LINES_TO_IDENTIFY_INSTRUMENT: int = 50
+
+    # Column names
+    ALTITUDE_GROUND_LEVEL_COL: str = "flight_computer_Altitude_agl"
+    ALTITUDE_SEA_LEVEL_COL: str = "flight_computer_Altitude"
 
     # Plots
     QUICKLOOK_PLOT_FILENAME: str = "helikite-quicklooks.html"
     QUALITYCHECK_PLOT_FILENAME: str = "helikite-qualitycheck.html"
     PLOT_LAYOUT_COMMON: dict = {
-        'font': {'size': 16,
-                 'family': 'Arial',
-        },
+        'font': {
+            'size': 16,
+            'family': 'Arial',
+            },
         'template': 'plotly_white',
         'height': 600
     }

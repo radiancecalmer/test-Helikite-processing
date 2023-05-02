@@ -1,5 +1,4 @@
-from typing import Dict, Any, List, Optional, Union, Callable
-from pydantic import BaseModel
+from typing import Dict, Any, List, Tuple
 from pandas import DataFrame
 from plotly.graph_objects import Figure
 from datetime import datetime
@@ -10,16 +9,17 @@ from constants import constants
 logger = logging.getLogger(__name__)
 logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
+
 class Instrument:
     def __init__(
         self,
-        dtype: Dict[Any, Any]={},             # Mapping of column to data type
+        dtype: Dict[Any, Any] = {},           # Mapping of column to data type
         na_values: List[Any] | None = None,   # List of values to consider null
         header: int | None = 0,               # Row ID for the header
         delimiter: str = ",",                 # String delimiter
         lineterminator: str | None = None,    # The character to define EOL
         comment: str | None = None,           # Ignore anything after set char
-        names: List[str] | None = None,       # Names of headers if non existant
+        names: List[str] | None = None,       # Names of headers if nonexistant
         index_col: bool | int | None = None,  # The column ID of the index
         cols_export: List[str] = [],          # Columns to export
         cols_housekeeping: List[str] = [],    # Columns to use for housekeeping
@@ -46,10 +46,10 @@ class Instrument:
         self.pressure_offset_housekeeping: float | None = None
         self.time_offset: Dict[str, int] = {}
         self.name: str | None = None
+        self.time_range: Tuple[Any, Any] | None = None
 
-
-    def add_yaml_config(self, yaml_props: Dict[str, Any]):
-        ''' Add the YAML config to the Instrument class
+    def add_config(self, yaml_props: Dict[str, Any]):
+        ''' Adds the application's config to the Instrument class
 
         This is called from the main() function in helikite.py
         '''
@@ -58,7 +58,6 @@ class Instrument:
         self.date = yaml_props['date']
         self.time_offset = yaml_props['time_offset']
         self.pressure_offset_housekeeping = yaml_props['pressure_offset']
-
 
     def data_corrections(self, df, *args, **kwargs):
         ''' Default callback function for data corrections.
@@ -71,8 +70,8 @@ class Instrument:
     def create_plots(self, df: DataFrame) -> List[Figure | None]:
         ''' Default callback for generated figures from dataframes
 
-        Return nothing, as anything else will populate the list that is written out
-        to HTML.
+        Return nothing, as anything else will populate the list that is written
+        out to HTML.
         '''
 
         return []
@@ -96,7 +95,6 @@ class Instrument:
 
         return None
 
-
     def add_device_name_to_columns(
         self,
         df: pd.DataFrame
@@ -106,7 +104,6 @@ class Instrument:
         df.columns = f"{self.name}_" + df.columns.values
 
         return df
-
 
     @property
     def housekeeping_columns(self) -> List[str]:
@@ -119,7 +116,6 @@ class Instrument:
             return [f"{self.name}_{x}" for x in self.cols_housekeeping]
         else:
             return []
-
 
     @property
     def export_columns(self) -> List[str]:
@@ -134,7 +130,6 @@ class Instrument:
             return [f"{self.name}_{x}" for x in self.cols_export]
         else:
             return []
-
 
     def set_time_as_index(
         self,
@@ -168,15 +163,21 @@ class Instrument:
                 minutes=self.time_offset['minute'],
                 seconds=self.time_offset['second'])
 
-       # Trim the dataframes to the time range specified in the config
-        df = df.loc[trim_start:trim_end]
+        # Trim the dataframes to the time range specified in the config
+        logger.debug(f"{self.name}: Original start time: {df.iloc[0].name} ")
+        logger.debug(f"{self.name}: Original end time: {df.iloc[-1].name} ")
+        self.time_range = (df.iloc[0].name, df.iloc[-1].name)
+
+        if None not in (trim_start, trim_end):
+            datemask = (df.index > trim_start) & (df.index <= trim_end)
+            df = df[datemask]
 
         return df
 
     def set_housekeeping_pressure_offset_variable(
         self,
         df: pd.DataFrame,
-        column_name="housekeeping_pressure"
+        column_name=constants.HOUSEKEEPING_VAR_PRESSURE
     ) -> pd.DataFrame:
         ''' Generate variable to offset pressure value for housekeeping
 
@@ -187,14 +188,13 @@ class Instrument:
 
         if self.pressure_variable is not None:
             if self.pressure_offset_housekeeping is None:
-                # If no offset, but a pressure var exists add column of same val
+                # If no offset, but a pressure var exists add col of same val
                 df[column_name] = df[self.pressure_variable]
             else:
                 df[column_name] = (df[self.pressure_variable]
                                    + self.pressure_offset_housekeeping)
 
         return df
-
 
     def read_data(
         self
@@ -218,6 +218,5 @@ class Instrument:
             names=self.names,
             index_col=self.index_col,
         )
-
 
         return df

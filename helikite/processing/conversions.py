@@ -36,8 +36,16 @@ def pressure_to_altitude(
 
     temperature_at_start += 273.15
     temp = temperature_at_start
-    pressure_at_sea_level = pressure_at_start * ((1 - ((0.0065 * altitude_at_start) / (temperature_at_start + (0.0065 * altitude_at_start)))) ** -5.257)
+    pressure_at_sea_level = (
+        pressure_at_start
+        * ((1 - ((0.0065 * altitude_at_start)
+                 / (temperature_at_start + (0.0065 * altitude_at_start))
+                 )) ** -5.257)
+    )
 
-    altitude = (((pressure_at_sea_level / pressure) ** (1 / 5.257) - 1) * temp) / 0.0065
+    altitude = (
+        (((pressure_at_sea_level / pressure) ** (1 / 5.257) - 1) * temp)
+        / 0.0065
+    )
 
     return altitude

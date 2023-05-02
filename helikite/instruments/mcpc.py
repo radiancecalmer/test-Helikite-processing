@@ -4,12 +4,12 @@
 Particle counter
 
 Time resoslution: 1 sec
-Variables to keep: aveconc, concent, rawconc, condtmp, satttmp, pressur, fillcnt, err_num
+Variables to keep: aveconc, concent, rawconc, condtmp, satttmp, pressur,
+                   fillcnt, err_num
 
 '''
 
 from .base import Instrument
-from typing import Dict, Any, List
 import pandas as pd
 
 
@@ -29,10 +29,11 @@ class MCPC(Instrument):
         if "#MCPC-UAV" in first_lines_of_csv[0]:
             return True
 
-    def data_corrections(
+        return False
+
+    def set_time_as_index(
         self,
         df: pd.DataFrame,
-        **kwargs
     ) -> pd.DataFrame:
 
         df['DateTime'] = pd.to_datetime(df['#YY/MM/DD'] + ' ' + df['HR:MN:SC'],
@@ -40,6 +41,7 @@ class MCPC(Instrument):
         df.drop(columns=["#YY/MM/DD", "HR:MN:SC"], inplace=True)
 
         return df
+
 
 mcpc = MCPC(
     header=13,
