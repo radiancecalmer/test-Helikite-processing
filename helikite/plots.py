@@ -288,6 +288,50 @@ def generate_grid_plot(
             )),
             row=2, col=4)
 
+    # Add *RAW* STAP data if it exists )
+    if instruments.stap_raw in all_instruments:
+        fig.add_trace(go.Scattergl(
+            x=df['stap_raw_invmm_b'],
+            y=df[altitude_col],
+            name="invmm_b (STAP Raw)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                line_width=2,
+                showscale=False,
+                symbol="circle-open"
+            )),
+            row=2, col=4)
+
+        fig.add_trace(go.Scattergl(
+            x=df['stap_raw_invmm_g'],
+            y=df[altitude_col],
+            name="invmm_g (STAP Raw)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                line_width=2,
+                showscale=False,
+                symbol="x-open"
+            )),
+            row=2, col=4)
+
+        fig.add_trace(go.Scattergl(
+            x=df['stap_raw_invmm_r'],
+            y=df[altitude_col],
+            name="invmm_r (STAP Raw)",
+            mode="markers",
+            marker=dict(
+                color=colors,
+                size=constants.PLOT_MARKER_SIZE,
+                line_width=2,
+                showscale=False,
+                symbol="diamond-open"
+            )),
+            row=2, col=4)
+
     if instruments.pico in all_instruments:
         fig.add_trace(go.Scattergl(
             x=df['pico_CO (ppm)'],
@@ -760,7 +804,9 @@ def campaign_2023(
           f"{instruments.filter.name}_pumpctl"],
          "Filter"
          ) if instruments.filter in all_instruments else (None, None),
-
+        ([f"{instruments.stap_raw.name}_smp_flw"],
+          "STAP Raw",
+        ) if instruments.stap_raw in all_instruments else (None, None),
     ]:
         if variables is not None:
             figures_qualitycheck.append(
