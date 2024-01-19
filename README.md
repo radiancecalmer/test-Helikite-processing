@@ -61,6 +61,8 @@ There are three stages to the application. These are:
 
 ## Docker
 
+### Building from code
+
 1. Build the docker image
 
    This only needs to be built once unless there is a change in code.
@@ -120,6 +122,21 @@ There are three stages to the application. These are:
        -v ./outputs:/app/outputs \
        helikite:latest
    ```
+
+### Downloading Github package
+
+The image is built and served already on Github. All the above steps can be
+issued by replacing the `helikite:latest` image with the Github one
+(`ghcr.io/eerl-epfl/helikite-data-processing:latest`):
+
+Therefore,
+
+```bash
+docker run \
+   -v ./inputs:/app/inputs \
+   -v ./outputs:/app/outputs \
+   ghcr.io/eerl-epfl/helikite-data-processing:latest generate_config
+```
 
 ## Using the Makefile
 
