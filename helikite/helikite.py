@@ -1,11 +1,11 @@
 import sys
-from processing import preprocess, sorting
-from constants import constants
-import instruments
+from helikite.processing import preprocess, sorting
+from helikite.constants import constants
+from helikite import instruments
+from helikite import plots
 import pandas as pd
 import os
 import datetime
-import plots
 import logging
 from typing import Dict, Any
 import typer
@@ -233,7 +233,7 @@ if __name__ == "__main__":
     #         preprocess.generate_config(overwrite=True)
     #     else:
     #         logger.error(
-    #             "Unknown argument. Options are: preprocess, " "generate_config"
+    #             "Unknown argument. Options are: preprocess, " "generate_config" # noqa
     #         )
     # else:  # If no args, run the main application
     #     # Get the config from the YAML file in the input directory

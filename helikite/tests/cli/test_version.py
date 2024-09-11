@@ -1,5 +1,6 @@
 from typer.testing import CliRunner
 import helikite
+from helikite import app
 import os
 
 runner = CliRunner()
@@ -18,7 +19,7 @@ def test_cli_version():
         version = (
             pyproject.split("\n")[2].split("=")[1].strip().replace('"', "")
         )
-    result = runner.invoke(helikite.app, ["--version"])
+    result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
     assert "helikite" in result.stdout
     assert version in result.stdout

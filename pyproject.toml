@@ -6,6 +6,9 @@ authors = ["Evan Thomas <evan.thomas@epfl.ch>"]
 readme = "README.md"
 packages = [{ include = "helikite" }]
 
+[tool.poetry.scripts]
+helikite = 'helikite.helikite:app'
+
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
 pandas = "^2.2"

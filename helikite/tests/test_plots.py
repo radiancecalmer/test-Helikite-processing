@@ -5,7 +5,7 @@ import numpy
 
 # Append the root directory of your project to the system path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from plots import generate_normalised_colours  # noqa
+from helikite.plots import generate_normalised_colours  # noqa
 
 
 def test_nan_for_colourmap(fc_data: pd.DataFrame):

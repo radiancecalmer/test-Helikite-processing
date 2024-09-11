@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import yaml
-from constants import constants
-import instruments
+from helikite.constants import constants
+from helikite import instruments
 import os
 from typing import Any, Dict
 import logging
@@ -12,14 +12,14 @@ logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
 
 def get_columns_from_dtype(instrument: instruments.base.Instrument):
-    ''' Gets the column names from the instrument config '''
+    """Gets the column names from the instrument config"""
 
     return list(instrument.dtype)
 
 
 def read_yaml_config(file_path):
     # Open YAML
-    with open(file_path, 'r') as in_yaml:
+    with open(file_path, "r") as in_yaml:
         yaml_config = yaml.load(in_yaml, Loader=yaml.Loader)
 
     return yaml_config
@@ -27,18 +27,17 @@ def read_yaml_config(file_path):
 
 def preprocess():
     yaml_config = read_yaml_config(
-        os.path.join(constants.INPUTS_FOLDER,
-                     constants.CONFIG_FILE)
+        os.path.join(constants.INPUTS_FOLDER, constants.CONFIG_FILE)
     )
 
     # Hold a list of the loaded instrument objects
     instrument_objects = {}
-    for instrument, props in yaml_config['instruments'].items():
-        instrument_objects[instrument] = getattr(instruments, props['config'])
+    for instrument, props in yaml_config["instruments"].items():
+        instrument_objects[instrument] = getattr(instruments, props["config"])
 
     for filename in os.listdir(constants.INPUTS_FOLDER):
         # Ignore any yaml or keep files
-        if filename.endswith('yaml') or filename.endswith('.keep'):
+        if filename.endswith("yaml") or filename.endswith(".keep"):
             continue
 
         full_path = os.path.join(constants.INPUTS_FOLDER, filename)
@@ -71,27 +70,28 @@ def preprocess():
                             raise ValueError(
                                 f"Filename: {full_path} matched too many "
                                 "instrument configurations. Check that there "
-                                "are no duplicate files in the input directory,"
-                                " or that the file_identifier function for the "
-                                "instrument is not too weak in matching."
+                                "are no duplicate files in the input "
+                                "directory, or that the file_identifier "
+                                "function for the instrument is not too weak "
+                                "in matching."
                             )
                         if name in successful_matches:
                             raise ValueError(
                                 f"Instrument: {name} matched more than once. "
-                                "Check that there are no duplicate files in the"
-                                " input directory, or that the file_identifier "
-                                "function for the instrument is not too weak in"
-                                " matching."
+                                "Check that there are no duplicate files in "
+                                "the input directory, or that the "
+                                "file_identifier function for the instrument "
+                                "is not too weak in matching."
                             )
                         successful_matches.append(name)
                         instrument_match_count += 1
-                        props = yaml_config['instruments'][name]
+                        props = yaml_config["instruments"][name]
 
                         # Set filename in config
-                        props['file'] = full_path
+                        props["file"] = full_path
 
                         # Get the date if it is in the header
-                        props['date'] = obj.date_extractor(header_lines)
+                        props["date"] = obj.date_extractor(header_lines)
                 except IndexError:
                     if line_qty_breached is True:
                         logger.warning(
@@ -118,19 +118,19 @@ def preprocess():
                 else:
                     logger.warning("No instrument found !!")
 
-
     # Write out the updated yaml configuration
     print_preprocess_stats(yaml_config)
-    export_yaml_config(yaml_config,
-                       os.path.join(constants.INPUTS_FOLDER,
-                                    constants.CONFIG_FILE))
+    export_yaml_config(
+        yaml_config,
+        os.path.join(constants.INPUTS_FOLDER, constants.CONFIG_FILE),
+    )
 
 
 def print_preprocess_stats(yaml_config):
     found = []
     not_found = []
-    for instrument, props in yaml_config['instruments'].items():
-        if props['file'] is None:
+    for instrument, props in yaml_config["instruments"].items():
+        if props["file"] is None:
             not_found.append(instrument)
         else:
             found.append(instrument)
@@ -143,22 +143,20 @@ def print_preprocess_stats(yaml_config):
 def export_yaml_config(yaml_config, out_location=constants.CONFIG_FILE):
     logger.info(f"Writing YAML config to {out_location}")
     # Update YAML (will remove all commented out inputs)
-    with open(out_location, 'w') as in_yaml:
+    with open(out_location, "w") as in_yaml:
         yaml.dump(yaml_config, in_yaml)
 
 
 def generate_config(
     overwrite=False,
-    path=os.path.join(
-        constants.INPUTS_FOLDER,
-        constants.CONFIG_FILE)
+    path=os.path.join(constants.INPUTS_FOLDER, constants.CONFIG_FILE),
 ) -> None:
-    ''' Write out the configuration file
+    """Write out the configuration file
 
     If overwrite is True, the configuration file in the path argument is
     overwritten
 
-    '''
+    """
 
     if overwrite is False and os.path.exists(path):
         # Escape if overwrite if false and the file exists
@@ -169,56 +167,54 @@ def generate_config(
     # Go through each instrument in the __init__ of config.instrument
     instrument_objects = instruments.__dict__.items()
     yaml_config: Dict[str, Any] = {}
-    yaml_config['instruments'] = {}
-    yaml_config['global'] = {
-        'time_trim': {
-            'start': None,
-            'end': None,
+    yaml_config["instruments"] = {}
+    yaml_config["global"] = {
+        "time_trim": {
+            "start": None,
+            "end": None,
         },
     }
-    yaml_config['ground_station'] = {
-        'altitude': None,
-        'temperature': None,
-        'pressure': None
+    yaml_config["ground_station"] = {
+        "altitude": None,
+        "temperature": None,
+        "pressure": None,
     }
-    yaml_config['plots'] = {
-        'altitude_ground_level': False,
-        'grid': {
-            'resample_seconds': None
-        },
-        'heatmap': {
-            'msems_inverted': {
-                'zmin': None,
-                'zmax': None,
-                'zmid': None,
+    yaml_config["plots"] = {
+        "altitude_ground_level": False,
+        "grid": {"resample_seconds": None},
+        "heatmap": {
+            "msems_inverted": {
+                "zmin": None,
+                "zmax": None,
+                "zmid": None,
             },
-            'msems_scan': {
-                'zmin': None,
-                'zmax': None,
-                'zmid': None,
+            "msems_scan": {
+                "zmin": None,
+                "zmax": None,
+                "zmid": None,
             },
         },
-        'msems_readings_averaged': {
-            'Title1': {
-                'time_start': None,
-                'time_end': None,
-                'log_y': False,
+        "msems_readings_averaged": {
+            "Title1": {
+                "time_start": None,
+                "time_end": None,
+                "log_y": False,
             }
-        }
+        },
     }
 
     for instrument, obj in instrument_objects:
         # If the imported object is actually an Instrument, then proceed
         if isinstance(obj, instruments.base.Instrument):
-            yaml_config['instruments'][instrument] = {
-                'config': instrument,
-                'file': None,
-                'date': None,
-                'time_offset': {
-                    'hour': 0,
-                    'minute': 0,
-                    'second': 0,
+            yaml_config["instruments"][instrument] = {
+                "config": instrument,
+                "file": None,
+                "date": None,
+                "time_offset": {
+                    "hour": 0,
+                    "minute": 0,
+                    "second": 0,
                 },
-                'pressure_offset': None
+                "pressure_offset": None,
             }
     export_yaml_config(yaml_config, path)
