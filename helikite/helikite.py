@@ -205,7 +205,7 @@ def version_cb(value: bool) -> None:
     {constants.APPLICATION_NAME} - {constants.DESCRIPTION}
 
     Use the --help option on a subcommand to see more information about it.
-"""
+    """
 )
 def menu(
     version: bool = typer.Option(

@@ -53,7 +53,11 @@ class Constants(BaseSettings):
 
 @lru_cache()
 def get_constants():
-    with open(os.path.join(os.pardir, "pyproject.toml"), "r") as f:
+    file_dir = os.path.abspath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)
+    )
+
+    with open(os.path.join(file_dir, "pyproject.toml"), "r") as f:
         pyproject = toml.load(f)
         pyproject_version = pyproject["tool"]["poetry"]["version"]
         application_name = pyproject["tool"]["poetry"]["name"]
