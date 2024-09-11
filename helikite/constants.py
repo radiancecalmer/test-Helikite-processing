@@ -1,9 +1,18 @@
 from pydantic_settings import BaseSettings
 from pathlib import Path
 import logging
+import toml
+import os
+from functools import lru_cache
 
 
 class Constants(BaseSettings):
+    # Get the following data number from pyproject.toml in get_constants()
+    APPLICATION_NAME: str
+    APPLICATION_NAME_PYTHON: str
+    VERSION: str
+    DESCRIPTION: str
+
     INPUTS_FOLDER: Path = Path.cwd().joinpath("inputs")
     OUTPUTS_FOLDER: Path = Path.cwd().joinpath("outputs")
     OUTPUTS_INSTRUMENT_SUBFOLDER: str = "instruments"
@@ -42,4 +51,21 @@ class Constants(BaseSettings):
     )
 
 
-constants = Constants()
+@lru_cache()
+def get_constants():
+    with open(os.path.join(os.pardir, "pyproject.toml"), "r") as f:
+        pyproject = toml.load(f)
+        pyproject_version = pyproject["tool"]["poetry"]["version"]
+        application_name = pyproject["tool"]["poetry"]["name"]
+        application_name_python = application_name.replace("-", "_")
+        description = pyproject["tool"]["poetry"]["description"]
+
+    return Constants(
+        VERSION=pyproject_version,
+        APPLICATION_NAME=application_name,
+        APPLICATION_NAME_PYTHON=application_name_python,
+        DESCRIPTION=description,
+    )
+
+
+constants = get_constants()
