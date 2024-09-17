@@ -25,10 +25,11 @@ def read_yaml_config(file_path):
     return yaml_config
 
 
-def preprocess():
-    yaml_config = read_yaml_config(
-        os.path.join(constants.INPUTS_FOLDER, constants.CONFIG_FILE)
-    )
+def preprocess(
+    input_folder=constants.INPUTS_FOLDER,
+    config_file=constants.CONFIG_FILE,
+):
+    yaml_config = read_yaml_config(os.path.join(input_folder, config_file))
 
     # Hold a list of the loaded instrument objects
     instrument_objects = {}
@@ -149,7 +150,8 @@ def export_yaml_config(yaml_config, out_location=constants.CONFIG_FILE):
 
 def generate_config(
     overwrite=False,
-    path=os.path.join(constants.INPUTS_FOLDER, constants.CONFIG_FILE),
+    input_folder=constants.INPUTS_FOLDER,
+    config_file=constants.CONFIG_FILE,
 ) -> None:
     """Write out the configuration file
 
@@ -157,7 +159,7 @@ def generate_config(
     overwritten
 
     """
-
+    path = os.path.join(input_folder, config_file)
     if overwrite is False and os.path.exists(path):
         # Escape if overwrite if false and the file exists
         return

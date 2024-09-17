@@ -35,9 +35,61 @@ def generate_config(
         False, help="Overwrite the existing configuration file"
     ),
     input_folder: str = constants.INPUTS_FOLDER,
+    config_file: str = constants.CONFIG_FILE,
+) -> None:
+    """Generate a configuration file in the input folder"""
+
+    logger.info("Generating YAML configuration in input folder")
+    preprocess.generate_config(
+        overwrite=overwrite,
+        input_folder=input_folder,
+        config_file=config_file,
+    )
+
+
+@app.command("preprocess")
+def preprocess_data(
+    overwrite: bool = typer.Option(
+        False, help="Overwrite the existing configuration file"
+    ),
+    config_file: str = typer.Option(
+        constants.CONFIG_FILE,
+        help="The configuration file to use",
+        show_default=True,
+    ),
+    input_folder: str = constants.INPUTS_FOLDER,
+    # output_folder: str = constants.OUTPUTS_FOLDER,
+) -> None:
+    """Preprocess the data and generate the configuration file"""
+
+    preprocess.generate_config(
+        overwrite=overwrite,
+        input_folder=input_folder,
+        config_file=config_file,
+    )
+    preprocess.preprocess(
+        input_folder=input_folder,
+        config_file=config_file,
+    )
+
+
+@app.command()
+def execute(
+    config_file: str = typer.Option(
+        constants.CONFIG_FILE,
+        help="The configuration file to use",
+        show_default=True,
+    ),
+    input_folder: str = constants.INPUTS_FOLDER,
     output_folder: str = constants.OUTPUTS_FOLDER,
 ) -> None:
-    pass
+    """Execute the main processing and plotting of the data"""
+
+    config = preprocess.read_yaml_config(
+        os.path.join(input_folder, config_file)
+    )
+
+    main(config=config, output_path=output_folder)
 
 
 def main(
@@ -220,25 +272,4 @@ def menu(
 
 
 if __name__ == "__main__":
-    app()
-    # # If docker arg given, don't run main
-    # if len(sys.argv) > 1:
-    #     if sys.argv[1] == "preprocess":
-    #         # Run the preprocessing, generate config if it doesn't exist
-    #         preprocess.generate_config(overwrite=False)  # Write conf file
-    #         preprocess.preprocess()
-    #     elif sys.argv[1] == "generate_config":
-    #         # Generate the config file (overwrite if it exists)
-    #         logger.info("Generating YAML configuration in input folder")
-    #         preprocess.generate_config(overwrite=True)
-    #     else:
-    #         logger.error(
-    #             "Unknown argument. Options are: preprocess, " "generate_config" # noqa
-    #         )
-    # else:  # If no args, run the main application
-    #     # Get the config from the YAML file in the input directory
-    #     config = preprocess.read_yaml_config(
-    #         os.path.join(constants.INPUTS_FOLDER, constants.CONFIG_FILE)
-    #     )
-
-    #     main(config)
+    app()  # Execute the Typer CLI application
