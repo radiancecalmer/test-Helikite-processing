@@ -39,7 +39,6 @@ def generate_config(
 ) -> None:
     """Generate a configuration file in the input folder"""
 
-    logger.info("Generating YAML configuration in input folder")
     preprocess.generate_config(
         overwrite=overwrite,
         input_folder=input_folder,

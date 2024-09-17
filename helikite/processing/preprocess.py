@@ -159,12 +159,18 @@ def generate_config(
     overwritten
 
     """
+
+    # Create folder if it does not exist
+    if not os.path.exists(input_folder):
+        os.makedirs(input_folder)
+        logger.info(f"Created folder: {input_folder}")
+
     path = os.path.join(input_folder, config_file)
     if overwrite is False and os.path.exists(path):
         # Escape if overwrite if false and the file exists
         return
 
-    logger.info("Creating config YAML file...\n")
+    logger.info(f"Generating YAML configuration in {path}")
 
     # Go through each instrument in the __init__ of config.instrument
     instrument_objects = instruments.__dict__.items()
