@@ -24,6 +24,9 @@ class Filter(Instrument):
 
         return False
 
+    def data_corrections(self, df, *args, **kwargs):
+        return df
+
     def set_time_as_index(self, df: pd.DataFrame) -> pd.DataFrame:
         """Set the DateTime as index of the dataframe
 
@@ -40,6 +43,22 @@ class Filter(Instrument):
 
         # Define the datetime column as the index
         df.set_index("DateTime", inplace=True)
+
+        return df
+
+    def read_data(self) -> pd.DataFrame:
+
+        df = pd.read_csv(
+            self.filename,
+            dtype=self.dtype,
+            na_values=self.na_values,
+            header=self.header,
+            delimiter=self.delimiter,
+            lineterminator=self.lineterminator,
+            comment=self.comment,
+            names=self.names,
+            index_col=self.index_col,
+        )
 
         return df
 

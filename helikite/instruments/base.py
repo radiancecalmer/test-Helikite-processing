@@ -6,12 +6,13 @@ import pandas as pd
 import logging
 from helikite.constants import constants
 import os
+from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
 logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
 
-class Instrument:
+class Instrument(ABC):
     def __init__(
         self,
         dtype: Dict[Any, Any] = {},  # Mapping of column to data type
@@ -62,6 +63,7 @@ class Instrument:
         self.time_offset = yaml_props["time_offset"]
         self.pressure_offset_housekeeping = yaml_props["pressure_offset"]
 
+    @abstractmethod
     def data_corrections(self, df, *args, **kwargs):
         """Default callback function for data corrections.
 
@@ -79,6 +81,7 @@ class Instrument:
 
         return []
 
+    @abstractmethod
     def file_identifier(self, first_lines_of_csv: List[str]):
         """Default file identifier callback
 
@@ -131,6 +134,7 @@ class Instrument:
         else:
             return []
 
+    @abstractmethod
     def set_time_as_index(self, df: pd.DataFrame) -> pd.DataFrame:
         """This function is used to set the date in the file to the index
 
@@ -194,6 +198,7 @@ class Instrument:
 
         return df
 
+    @abstractmethod
     def read_data(self) -> pd.DataFrame:
         """Read data into dataframe
 

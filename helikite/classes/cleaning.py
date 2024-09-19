@@ -80,7 +80,6 @@ class Cleaner:
         if trim_end is None:
             trim_end = self.time_trim_to
 
-        print(trim_start, trim_end)
         for instrument in self._instruments:
             try:
                 temp_df = instrument.correct_time_from_config(

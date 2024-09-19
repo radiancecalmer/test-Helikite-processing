@@ -44,6 +44,25 @@ class OzoneMonitor(Instrument):
 
         return df
 
+    def data_corrections(self, df, *args, **kwargs):
+        return df
+
+    def read_data(self) -> pd.DataFrame:
+
+        df = pd.read_csv(
+            self.filename,
+            dtype=self.dtype,
+            na_values=self.na_values,
+            header=self.header,
+            delimiter=self.delimiter,
+            lineterminator=self.lineterminator,
+            comment=self.comment,
+            names=self.names,
+            index_col=self.index_col,
+        )
+
+        return df
+
 
 ozone_monitor = OzoneMonitor(
     na_values=["-"],

@@ -31,6 +31,9 @@ class STAP(Instrument):
 
         return False
 
+    def data_corrections(self, df, *args, **kwargs):
+        return df
+
     def set_time_as_index(self, df: pd.DataFrame) -> pd.DataFrame:
         """Set the DateTime as index of the dataframe and correct if needed
 
@@ -48,6 +51,22 @@ class STAP(Instrument):
 
         return df
 
+    def read_data(self) -> pd.DataFrame:
+
+        df = pd.read_csv(
+            self.filename,
+            dtype=self.dtype,
+            na_values=self.na_values,
+            header=self.header,
+            delimiter=self.delimiter,
+            lineterminator=self.lineterminator,
+            comment=self.comment,
+            names=self.names,
+            index_col=self.index_col,
+        )
+
+        return df
+
 
 class STAPRaw(Instrument):
     """This instrument class is for the raw STAP data"""
@@ -55,6 +74,9 @@ class STAPRaw(Instrument):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.name = "stap_raw"
+
+    def data_corrections(self, df, *args, **kwargs):
+        return df
 
     def file_identifier(self, first_lines_of_csv) -> bool:
         if (
@@ -80,6 +102,22 @@ class STAPRaw(Instrument):
 
         # Define the datetime column as the index
         df.set_index("DateTime", inplace=True)
+
+        return df
+
+    def read_data(self) -> pd.DataFrame:
+
+        df = pd.read_csv(
+            self.filename,
+            dtype=self.dtype,
+            na_values=self.na_values,
+            header=self.header,
+            delimiter=self.delimiter,
+            lineterminator=self.lineterminator,
+            comment=self.comment,
+            names=self.names,
+            index_col=self.index_col,
+        )
 
         return df
 
