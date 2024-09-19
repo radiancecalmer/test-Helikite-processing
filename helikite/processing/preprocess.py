@@ -36,88 +36,25 @@ def preprocess(
     for instrument, props in yaml_config["instruments"].items():
         instrument_objects[instrument] = getattr(instruments, props["config"])
 
-    for filename in os.listdir(constants.INPUTS_FOLDER):
-        # Ignore any yaml or keep files
-        if filename.endswith("yaml") or filename.endswith(".keep"):
-            continue
+    for instrument_name, instrument_obj in instrument_objects.items():
+        matched_file = instrument_obj.detect_from_folder(
+            input_folder,
+            lines_to_read=constants.QTY_LINES_TO_IDENTIFY_INSTRUMENT,
+        )
 
-        full_path = os.path.join(constants.INPUTS_FOLDER, filename)
-        logger.info(f"Determining instrument for {filename:40} ... ")
+        if matched_file:
+            props = yaml_config["instruments"][instrument_name]
 
-        # Hold a list of name matches as to not match more than once
-        successful_matches = []
-        instrument_match_count = 0  # Count how many matches, err if > 0
+            # Set filename in config
+            props["file"] = matched_file
 
-        with open(full_path) as in_file:
-            # Read the first set of lines for headers
-            try:
-                line_qty_breached = False  # If exception called, flag as true
-                header_lines = []
-                for x in range(constants.QTY_LINES_TO_IDENTIFY_INSTRUMENT):
-                    header_lines.append(next(in_file))
-            except (IndexError, StopIteration):
-                logger.warning(
-                    "Instrument has less than "
-                    f"{constants.QTY_LINES_TO_IDENTIFY_INSTRUMENT} lines to "
-                    f"scan for headers. Stopping at line {x} and continuing. "
-                )
-                line_qty_breached = True
-            for name, obj in instrument_objects.items():
-                try:
-                    if obj.file_identifier(header_lines):
-                        # Increment count of matches and also add match to list
-                        logger.info(f"Instrument: {name}")
-                        if instrument_match_count > 0:
-                            raise ValueError(
-                                f"Filename: {full_path} matched too many "
-                                "instrument configurations. Check that there "
-                                "are no duplicate files in the input "
-                                "directory, or that the file_identifier "
-                                "function for the instrument is not too weak "
-                                "in matching."
-                            )
-                        if name in successful_matches:
-                            raise ValueError(
-                                f"Instrument: {name} matched more than once. "
-                                "Check that there are no duplicate files in "
-                                "the input directory, or that the "
-                                "file_identifier function for the instrument "
-                                "is not too weak in matching."
-                            )
-                        successful_matches.append(name)
-                        instrument_match_count += 1
-                        props = yaml_config["instruments"][name]
-
-                        # Set filename in config
-                        props["file"] = full_path
-
-                        # Get the date if it is in the header
-                        props["date"] = obj.date_extractor(header_lines)
-                except IndexError:
-                    if line_qty_breached is True:
-                        logger.warning(
-                            "Due to an input file found smaller than the "
-                            "configuration defined value of "
-                            f"{constants.QTY_LINES_TO_IDENTIFY_INSTRUMENT} "
-                            f"lines. The instrument {name} has been skipped "
-                            f"when looking in {full_path} as it requires "
-                            "more lines to validate its header. If no "
-                            "instrument is found in this iteration of the "
-                            "instrument search, consider adding the path of "
-                            "this instrument's file manually in the "
-                            "config.yaml. Another warning message should show "
-                            "after checking all files, if this is necessary."
-                        )
-
-            if instrument_match_count == 0:
-                if line_qty_breached is True:
-                    logger.warning(
-                        "After searching a short file, no instrument was "
-                        "found. Consider adding this instrument file"
-                        "in manually"
-                    )
-                else:
-                    logger.warning("No instrument found !!")
+            # Get the date if it is in the header
+            with open(matched_file) as in_file:
+                header_lines = [
+                    next(in_file)
+                    for _ in range(constants.QTY_LINES_TO_IDENTIFY_INSTRUMENT)
+                ]
+                props["date"] = instrument_obj.date_extractor(header_lines)
 
     # Write out the updated yaml configuration
     print_preprocess_stats(yaml_config)

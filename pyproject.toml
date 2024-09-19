@@ -20,6 +20,7 @@ types-pyyaml = "^6.0.12.9"
 pydantic-settings = "^2.5.2"
 typer = "^0.12.5"
 toml = "^0.10.2"
+ipympl = "^0.9.4"
 
 
 [tool.poetry.group.dev.dependencies]

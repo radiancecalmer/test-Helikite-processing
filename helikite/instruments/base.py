@@ -5,6 +5,7 @@ from datetime import datetime
 import pandas as pd
 import logging
 from helikite.constants import constants
+import os
 
 logger = logging.getLogger(__name__)
 logger.setLevel(constants.LOGLEVEL_CONSOLE)
@@ -213,5 +214,75 @@ class Instrument:
             names=self.names,
             index_col=self.index_col,
         )
+
+        return df
+
+    def detect_from_folder(
+        self,
+        input_folder: str,
+        lines_to_read=50,
+        quiet=False,
+    ):
+        """Scans an input folder for the instrument file
+
+        If there are two files that match the instrument, the function will
+        raise an error. This is to prevent the program from trying to process
+        the same file twice.
+        """
+        successful_matches = []
+
+        for filename in os.listdir(input_folder):
+            # Ignore any yaml or keep files
+            if not filename.lower().endswith((".csv", ".txt")):
+                continue
+
+            full_path = os.path.join(input_folder, filename)
+
+            with open(full_path) as in_file:
+                try:
+                    header_lines = [
+                        next(in_file) for _ in range(lines_to_read)
+                    ]
+                except (IndexError, StopIteration):
+                    logger.warning(
+                        f"Instrument has less than {lines_to_read} lines "
+                        f"in {filename}. "
+                        f"Stopping early at line {len(header_lines)}."
+                    )
+
+                if self.file_identifier(header_lines):
+                    if not quiet:
+                        logger.info(
+                            f"Instrument: {self.name} detected in {filename}"
+                        )
+                    successful_matches.append(filename)
+                    if len(successful_matches) > 1:
+                        raise ValueError(
+                            "Multiple instruments detected: "
+                            f"{successful_matches}. "
+                            "Please ensure only one instrument is detected."
+                        )
+
+        if not successful_matches:
+            logger.warning(f"No instrument detected for {self.name}")
+            return None
+
+        if not quiet:
+            logger.info(f"Matched file: {successful_matches[0]}")
+
+        return os.path.join(input_folder, successful_matches[0])
+
+    def read_from_folder(
+        self,
+        input_folder: str,
+        quiet=False,
+    ) -> pd.DataFrame:
+        """Reads the data from the detected file in the input folder"""
+
+        self.filename = self.detect_from_folder(input_folder, quiet=quiet)
+        if self.filename is None:
+            return None
+
+        df = self.read_data()
 
         return df

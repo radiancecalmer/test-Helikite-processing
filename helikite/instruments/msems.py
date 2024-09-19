@@ -85,8 +85,8 @@ class MSEMSInverted(Instrument):
         # Calculate the bin limits for all but the first and last
         for i, col in enumerate(bin_limit_columns[1:-1]):
             df[col] = (
-                bin_diameter_log[i]
-                + (bin_diameter_log[i + 1] - bin_diameter_log[i]) / 2
+                bin_diameter_log.iloc[i]
+                + (bin_diameter_log.iloc[i + 1] - bin_diameter_log.iloc[i]) / 2
             )
 
         # Return values to the inverse of log10

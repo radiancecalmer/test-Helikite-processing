@@ -23,3 +23,4 @@ def test_cli_version():
     assert result.exit_code == 0
     assert "helikite" in result.stdout
     assert version in result.stdout
+

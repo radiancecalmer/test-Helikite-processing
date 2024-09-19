@@ -57,10 +57,17 @@ class SmartTether(Instrument):
         possible. This function checks for this and corrects the date if needed
         """
 
+        if self.date is None:
+            raise ValueError(
+                "No flight date provided. Necessary for SmartTether"
+            )
+
+        date = self.date
+        if isinstance(self.date, datetime.date):
+            date = pd.to_datetime(self.date)
+
         # Date from header (stored in self.date), then add time
-        df["DateTime"] = pd.to_datetime(
-            self.date + pd.to_timedelta(df["Time"])
-        )
+        df["DateTime"] = pd.to_datetime(date + pd.to_timedelta(df["Time"]))
 
         # Check for midnight rollover. Can assume that the data will never be
         # longer than a day, so just check once for a midnight rollover
