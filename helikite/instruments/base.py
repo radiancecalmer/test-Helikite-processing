@@ -153,6 +153,18 @@ class Instrument(ABC):
         """Correct the time offset and trim from the configuration"""
 
         if (
+            not self.time_offset
+            or self.time_offset == {}
+            or (
+                self.time_offset["hour"] == 0
+                and self.time_offset["minute"] == 0
+                and self.time_offset["second"] == 0
+            )
+        ):
+            logger.info(f"No time offset for {self.name}")
+
+            return df
+        if (
             self.time_offset["hour"] != 0
             or self.time_offset["minute"] != 0
             or self.time_offset["second"] != 0
@@ -291,3 +303,14 @@ class Instrument(ABC):
         df = self.read_data()
 
         return df
+
+    def remove_duplicates(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Remove duplicate rows from the dataframe"""
+        df_unique=df.copy()
+        df_unique['duplicate_values']=df_unique.index.duplicated()
+        df_unique.drop_duplicates(subset=['DateTime'], inplace=True)
+
+        logger.info(
+            f"Duplicates removed from {self.name}: {len(df) - len(df_unique)}"
+
+        return df_unique

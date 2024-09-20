@@ -3,6 +3,7 @@ from typing import Any
 import datetime
 from helikite.instruments.base import Instrument
 from helikite.constants import constants
+import matplotlib.pyplot as plt
 
 
 class Cleaner:
@@ -20,6 +21,8 @@ class Cleaner:
         self.flight_date: datetime.date = flight_date
         self.time_trim_from: datetime.datetime | None = time_trim_from
         self.time_trim_to: datetime.datetime | None = time_trim_to
+        self.time_offset: datetime.time = time_offset
+        self.pressure_column: str = constants.HOUSEKEEPING_VAR_PRESSURE
 
         # Create an attribute from each instrument.name
         for instrument in instruments:
@@ -28,6 +31,10 @@ class Cleaner:
             )
             instrument.df = instrument.df_original.copy(deep=True)
             instrument.date = flight_date
+            instrument.time_offset = {}
+            instrument.time_offset["hour"] = time_offset.hour
+            instrument.time_offset["minute"] = time_offset.minute
+            instrument.time_offset["second"] = time_offset.second
 
             # Add the instrument to the Cleaner object and the list
             setattr(self, instrument.name, instrument)
@@ -42,14 +49,17 @@ class Cleaner:
 
     def set_pressure_column(
         self,
-        from_column_override: str = None,
         column_name: str = constants.HOUSEKEEPING_VAR_PRESSURE,
     ) -> None:
+        if column_name != constants.HOUSEKEEPING_VAR_PRESSURE:
+            print("Updating pressure column to", column_name)
+            self.pressure_column = column_name
+
         for instrument in self._instruments:
             try:
                 instrument.df = (
                     instrument.set_housekeeping_pressure_offset_variable(
-                        instrument.df, column_name
+                        instrument.df, self.pressure_column
                     )
                 )
                 print("Set pressure column for", instrument.name)
@@ -105,6 +115,9 @@ class Cleaner:
         start_pressure: float = None,
         start_temperature: float = None,
     ) -> None:
+        success = []
+        errors = []
+
         for instrument in self._instruments:
             try:
                 instrument.df = instrument.data_corrections(
@@ -113,8 +126,41 @@ class Cleaner:
                     start_pressure=start_pressure,
                     start_temperature=start_temperature,
                 )
-                print("Applied data corrections for", instrument.name)
+                success.append(instrument.name)
             except Exception as e:
+                errors.append((instrument.name, e))
+
+        print(
+            "Set pressure column for "
+            f"({len(success)}/{len(self._instruments)}): {', '.join(success)}"
+        )
+        print(f"Errors ({len(errors)}/{len(self._instruments)}):")
+        for error in errors:
+            print(f"Error ({error[0]}): {error[1]}")
+
+    def plot_pressure(self) -> None:
+        """Creates a plot with the pressure measurement of each instrument
+
+        Assumes the pressure column has been set for each instrument
+        """
+
+        fig, ax = plt.subplots()
+
+        for instrument in self._instruments:
+            # Check that the column exists
+            if self.pressure_column not in instrument.df.columns:
                 print(
-                    f"Error applying data corrections for {instrument.name}: {e}"
+                    f"Error: {instrument.name} does not have a pressure column"
                 )
+                continue
+            ax.plot(
+                instrument.df.index,
+                instrument.df[self.pressure_column],
+                label=instrument.name,
+            )
+
+        ax.set_title("Pressure measurements")
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Pressure (hPa)")
+        ax.legend()
+        plt.show()
