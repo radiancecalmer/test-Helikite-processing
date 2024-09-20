@@ -51,6 +51,9 @@ class Cleaner:
         self,
         column_name: str = constants.HOUSEKEEPING_VAR_PRESSURE,
     ) -> None:
+
+        success = []
+        errors = []
         if column_name != constants.HOUSEKEEPING_VAR_PRESSURE:
             print("Updating pressure column to", column_name)
             self.pressure_column = column_name
@@ -62,27 +65,33 @@ class Cleaner:
                         instrument.df, self.pressure_column
                     )
                 )
-                print("Set pressure column for", instrument.name)
+                success.append(instrument.name)
             except Exception as e:
-                print(
-                    f"Error setting pressure column for {instrument.name}: {e}"
-                )
+                errors.append((instrument.name, e))
+
+        self.print_success_errors("pressure column", success, errors)
 
     def set_time_as_index(self) -> None:
+        success = []
+        errors = []
+
         for instrument in self._instruments:
             try:
                 instrument.df = instrument.set_time_as_index(instrument.df)
-                print("Set time as index for", instrument.name)
+                success.append(instrument.name)
             except Exception as e:
-                print(
-                    f"Error setting time as index for {instrument.name}: {e}"
-                )
+                errors.append((instrument.name, e))
+
+        self.print_success_errors("time as index", success, errors)
 
     def correct_time(
         self,
         trim_start: pd.Timestamp | None = None,
         trim_end: pd.Timestamp | None = None,
     ) -> None:
+
+        success = []
+        errors = []
 
         # If no trim start or end, use the class's time_trim_from/to values
         if trim_start is None:
@@ -103,11 +112,11 @@ class Cleaner:
                     continue
 
                 instrument.df = temp_df
-                print("Corrected time from config for", instrument.name)
+                success.append(instrument.name)
             except Exception as e:
-                print(
-                    f"Error correcting time from config for {instrument.name}: {e}"
-                )
+                errors.append((instrument.name, e))
+
+        self.print_success_errors("time corrections", success, errors)
 
     def data_corrections(
         self,
@@ -130,13 +139,7 @@ class Cleaner:
             except Exception as e:
                 errors.append((instrument.name, e))
 
-        print(
-            "Set pressure column for "
-            f"({len(success)}/{len(self._instruments)}): {', '.join(success)}"
-        )
-        print(f"Errors ({len(errors)}/{len(self._instruments)}):")
-        for error in errors:
-            print(f"Error ({error[0]}): {error[1]}")
+        self.print_success_errors("data corrections", success, errors)
 
     def plot_pressure(self) -> None:
         """Creates a plot with the pressure measurement of each instrument
@@ -150,7 +153,7 @@ class Cleaner:
             # Check that the column exists
             if self.pressure_column not in instrument.df.columns:
                 print(
-                    f"Error: {instrument.name} does not have a pressure column"
+                    f"Note: {instrument.name} does not have a pressure column"
                 )
                 continue
             ax.plot(
@@ -164,3 +167,30 @@ class Cleaner:
         ax.set_ylabel("Pressure (hPa)")
         ax.legend()
         plt.show()
+
+    def remove_duplicates(self) -> None:
+
+        success = []
+        errors = []
+        for instrument in self._instruments:
+            try:
+                instrument.df = instrument.remove_duplicates(instrument.df)
+                success.append(instrument.name)
+            except Exception as e:
+                errors.append((instrument.name, e))
+
+        self.print_success_errors("duplicate removal", success, errors)
+
+    def print_success_errors(
+        self,
+        operation: str,
+        success: list[str],
+        errors: list[tuple[str, Any]],
+    ) -> None:
+        print(
+            f"Set {operation} for "
+            f"({len(success)}/{len(self._instruments)}): {', '.join(success)}"
+        )
+        print(f"Errors ({len(errors)}/{len(self._instruments)}):")
+        for error in errors:
+            print(f"Error ({error[0]}): {error[1]}")

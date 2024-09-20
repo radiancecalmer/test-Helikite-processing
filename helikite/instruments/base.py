@@ -306,11 +306,12 @@ class Instrument(ABC):
 
     def remove_duplicates(self, df: pd.DataFrame) -> pd.DataFrame:
         """Remove duplicate rows from the dataframe"""
-        df_unique=df.copy()
-        df_unique['duplicate_values']=df_unique.index.duplicated()
-        df_unique.drop_duplicates(subset=['DateTime'], inplace=True)
+        df_unique = df.copy()
+        df_unique["duplicate_values"] = df_unique.index.duplicated()
+        df_unique.drop_duplicates(inplace=True)
 
         logger.info(
             f"Duplicates removed from {self.name}: {len(df) - len(df_unique)}"
+        )
 
         return df_unique
