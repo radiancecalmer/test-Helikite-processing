@@ -3,7 +3,7 @@ from typing import Any
 import datetime
 from helikite.instruments.base import Instrument
 from helikite.constants import constants
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 
 class Cleaner:
@@ -25,6 +25,7 @@ class Cleaner:
         self.pressure_column: str = constants.HOUSEKEEPING_VAR_PRESSURE
         self.master_df: pd.DataFrame | None = None
         self.housekeeping_df: pd.DataFrame | None = None
+        self.rolling_window_pressure_column_name: str = "pressure_rn"
 
         # Create an attribute from each instrument.name
         for instrument in instruments:
@@ -154,7 +155,7 @@ class Cleaner:
         Assumes the pressure column has been set for each instrument
         """
 
-        fig, ax = plt.subplots()
+        fig = go.Figure()
 
         for instrument in self._instruments:
             # Check that the column exists
@@ -163,17 +164,30 @@ class Cleaner:
                     f"Note: {instrument.name} does not have a pressure column"
                 )
                 continue
-            ax.plot(
-                instrument.df.index,
-                instrument.df[self.pressure_column],
-                label=instrument.name,
+            fig.add_trace(
+                go.Scatter(
+                    x=instrument.df.index,
+                    y=instrument.df[self.pressure_column],
+                    name=instrument.name,
+                )
             )
 
-        ax.set_title("Pressure measurements")
-        ax.set_xlabel("Time")
-        ax.set_ylabel("Pressure (hPa)")
-        ax.legend()
-        plt.show()
+        fig.update_layout(
+            title="Pressure measurements",
+            xaxis_title="Time",
+            yaxis_title="Pressure (hPa)",
+            legend=dict(
+                title="Instruments",
+                yanchor="top",
+                y=1,
+                xanchor="left",
+                x=1.05,
+                orientation="v",
+            ),
+            margin=dict(l=40, r=150, t=50, b=40),
+        )
+
+        fig.show()
 
     def remove_duplicates(self) -> None:
 
@@ -210,13 +224,16 @@ class Cleaner:
         objects. If this attribute does not exist, the columns are placed at
         the end of the dataframe.
         """
-        for instrument in self._instruments:
-            instrument.df = instrument.add_device_name_to_columns(
-                instrument.df
-            )
+        # Create a list of copies of the instrument dataframes with device
+        # names added
+        instrument_dfs = [
+            instrument.add_device_name_to_columns(instrument.df.copy())
+            for instrument in self._instruments
+        ]
 
         print(
-            "Added instrument names to columns in their respective dataframes."
+            "Added instrument names to columns in their respective dataframes "
+            "(without modifying originals)."
         )
 
         # Sort the export columns in their numerical hierarchy order and log
@@ -224,13 +241,13 @@ class Cleaner:
         print("Instruments will be merged together with this column order:")
         for instrument in self._instruments:
             for column in instrument.export_columns:
-                print(column)
+                print(f"\t{column}")
 
         # Merge all the dataframes together, first df is the master
-        self.master_df = self._instruments[0].df
-        for instrument in self._instruments[1:]:
+        self.master_df = instrument_dfs[0]
+        for df in instrument_dfs[1:]:
             self.master_df = self.master_df.merge(
-                instrument.df,
+                df,
                 how="outer",
                 left_index=True,
                 right_index=True,
@@ -293,3 +310,55 @@ class Cleaner:
             "\tThe order of the instruments is determined by the export "
             "order defined in each instrument's class."
         )
+
+    def apply_rolling_window_to_pressure(self, window_size: int = 20):
+        """Apply rolling window to the pressure measurements of each instrument
+
+        Then plot the pressure measurements with the rolling window applied
+        """
+
+        fig = go.Figure()
+        for instrument in self._instruments:
+            if self.pressure_column not in instrument.df.columns:
+                print(
+                    f"Note: {instrument.name} does not have a pressure column"
+                )
+                continue
+            instrument.df[self.rolling_window_pressure_column_name] = (
+                instrument.df[self.pressure_column]
+                .rolling(window=window_size)
+                .mean()
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=instrument.df.index,
+                    y=instrument.df[self.rolling_window_pressure_column_name],
+                    name=f"{instrument.name}_rolling_window",
+                )
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=instrument.df.index,
+                    y=instrument.df[self.pressure_column],
+                    name=instrument.name,
+                )
+            )
+
+        fig.update_layout(
+            title="Pressure measurements",
+            xaxis_title="Time",
+            yaxis_title="Pressure (hPa)",
+            legend=dict(
+                title="Instruments",
+                yanchor="top",
+                y=1,
+                xanchor="left",
+                x=1.05,
+                orientation="v",
+            ),
+            margin=dict(l=40, r=150, t=50, b=40),
+        )
+
+        fig.show()
