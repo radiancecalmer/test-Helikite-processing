@@ -23,13 +23,15 @@ class Cleaner:
         self.time_trim_to: datetime.datetime | None = time_trim_to
         self.time_offset: datetime.time = time_offset
         self.pressure_column: str = constants.HOUSEKEEPING_VAR_PRESSURE
+        self.master_df: pd.DataFrame | None = None
+        self.housekeeping_df: pd.DataFrame | None = None
 
         # Create an attribute from each instrument.name
         for instrument in instruments:
-            instrument.df_original = instrument.read_from_folder(
+            instrument.df_raw = instrument.read_from_folder(
                 input_folder, quiet=True
             )
-            instrument.df = instrument.df_original.copy(deep=True)
+            instrument.df = instrument.df_raw.copy(deep=True)
             instrument.date = flight_date
             instrument.time_offset = {}
             instrument.time_offset["hour"] = time_offset.hour
@@ -41,7 +43,12 @@ class Cleaner:
             self._instruments.append(instrument)
 
         self.print_instruments()
-        print("Each instrument has a df attribute, and a backup df_original.")
+        print(
+            "Helikite Cleaner has been initialised. Each instrument has "
+            "been assigned a df attribute where processing changes will ",
+            "occur, and an untouched df_raw. For example: "
+            "Cleaner.flight_computer.df",
+        )
 
     def print_instruments(self) -> None:
         for instrument in self._instruments:
@@ -194,3 +201,95 @@ class Cleaner:
         print(f"Errors ({len(errors)}/{len(self._instruments)}):")
         for error in errors:
             print(f"Error ({error[0]}): {error[1]}")
+
+    def merge_instruments(self):
+        """Merges all of the dataframes from the instruments and exports them
+
+        The dataframes are merged based on the DateTime index. The order of the
+        columns is determined by the export_order attribute of the Instrument
+        objects. If this attribute does not exist, the columns are placed at
+        the end of the dataframe.
+        """
+        for instrument in self._instruments:
+            instrument.df = instrument.add_device_name_to_columns(
+                instrument.df
+            )
+
+        print(
+            "Added instrument names to columns in their respective dataframes."
+        )
+
+        # Sort the export columns in their numerical hierarchy order and log
+        self._instruments.sort(key=lambda x: x.export_order)
+        print("Instruments will be merged together with this column order:")
+        for instrument in self._instruments:
+            for column in instrument.export_columns:
+                print(column)
+
+        # Merge all the dataframes together, first df is the master
+        self.master_df = self._instruments[0].df
+        for instrument in self._instruments[1:]:
+            self.master_df = self.master_df.merge(
+                instrument.df,
+                how="outer",
+                left_index=True,
+                right_index=True,
+            )
+
+        # Sort rows by the date index
+        self.master_df.index = pd.to_datetime(self.master_df.index)
+        self.master_df.sort_index(inplace=True)
+
+        print("The master dataframe has been created at Cleaner.master_df.")
+
+    def export_data(
+        self,
+        master_filename: str = "master.csv",
+        housekeeping_filename: str = "housekeeping.csv",
+        export_master: bool = True,
+        export_housekeeping: bool = True,
+    ) -> None:
+        """Export the merged dataframes to CSV files"""
+
+        # Raise error if the dataframes have not been merged
+        if hasattr(self, "master_df") is False or self.master_df.empty:
+            raise ValueError(
+                "Dataframes have not been merged. Please run the "
+                "merge_instruments() method."
+            )
+
+        # Export data and housekeeping CSV files using the column names from
+        # the instruments
+        if export_master:
+            master_cols = [
+                f"{col}"
+                for instrument in self._instruments
+                for col in instrument.export_columns
+            ]
+            self.master_df[master_cols].to_csv(master_filename)
+
+        if export_housekeeping:
+            housekeeping_cols = [
+                f"{col}"
+                for instrument in self._instruments
+                for col in instrument.housekeeping_columns
+            ]
+            self.master_df[housekeeping_cols].to_csv(housekeeping_filename)
+
+        print("\nDone.")
+        print("\tDataframes have been exported to CSV files.")
+
+        if export_master:
+            print(f"\tThe file '{master_filename}' contains the data columns")
+        if export_housekeeping:
+            print(
+                f"\tThe file '{housekeeping_filename}' contains the "
+                "housekeeping columns."
+            )
+        print(
+            "\tThe column order is determined by the export_order attribute."
+        )
+        print(
+            "\tThe order of the instruments is determined by the export "
+            "order defined in each instrument's class."
+        )
