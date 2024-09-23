@@ -4,6 +4,7 @@ import datetime
 from helikite.instruments.base import Instrument
 from helikite.constants import constants
 import plotly.graph_objects as go
+import numpy as np
 
 
 class Cleaner:
@@ -343,6 +344,139 @@ class Cleaner:
                     x=instrument.df.index,
                     y=instrument.df[self.pressure_column],
                     name=instrument.name,
+                )
+            )
+
+        fig.update_layout(
+            title="Pressure measurements",
+            xaxis_title="Time",
+            yaxis_title="Pressure (hPa)",
+            legend=dict(
+                title="Instruments",
+                yanchor="top",
+                y=1,
+                xanchor="left",
+                x=1.05,
+                orientation="v",
+            ),
+            margin=dict(l=40, r=150, t=50, b=40),
+        )
+
+        fig.show()
+
+    def apply_cross_correlation_to_pressure(self, walk_time: int = 60):
+        def matchpress(
+            dfpressure: pd.DataFrame,
+            refpresFC: float,
+            takeofftimeFL: pd.Timestamp,
+            walktime: pd.Timedelta,
+        ):
+            # correct the other instrument pressure with the reference pressure
+
+            try:
+                diffpress = (
+                    dfpressure.loc[
+                        takeofftimeFL - walktime : takeofftimeFL
+                    ].mean()
+                    - refpresFC
+                )
+                dfprescorr = dfpressure.sub(np.float64(diffpress))
+
+            # catch when df1 is None
+            except AttributeError:
+                pass
+            # catch when it hasn't even been defined
+            except NameError:
+                pass
+
+            return dfprescorr
+
+        def presdetrend(
+            dfpressure: pd.DataFrame,
+            takeofftimeFL: pd.Timestamp,
+            landingtimeFL: pd.Timestamp,
+        ):
+            linearfit = np.linspace(
+                dfpressure.loc[takeofftimeFL],
+                dfpressure.loc[landingtimeFL],
+                len(dfpressure),
+            )
+            dfdetrend = dfpressure - linearfit + dfpressure.loc[takeofftimeFL]
+
+            return dfdetrend
+
+        reference_instrument = self.flight_computer
+        if self.flight_computer not in self._instruments:
+            print(
+                "Flight computer not found in instruments. "
+                "Necessary for cross-correlation."
+            )
+            return
+
+        walktime = pd.to_timedelta(walk_time, unit="s")
+
+        for instrument in self._instruments:
+            if instrument == reference_instrument:
+                continue
+            # takeeofftimeFL = instrument.df.index.asof(self.time_trim_from)
+            # landingtimeFL = instrument.df.index.asof(self.time_trim_to)
+            # takeeofftimeFL = pd.Timestamp(self.time_trim_from)
+            # landingtimeFL = pd.Timestamp(self.time_trim_to)
+
+            takeeofftimeFL = instrument.df.index[0]
+            landingtimeFL = instrument.df.index[-1]
+
+            if (
+                self.rolling_window_pressure_column_name
+                not in instrument.df.columns
+            ):
+                print(
+                    f"Note: {instrument.name} does not have a rolling window "
+                    "pressure column"
+                )
+                continue
+            # Detrend the pressure measurements
+            instrument.df["pressure_detrend"] = presdetrend(
+                instrument.df[self.rolling_window_pressure_column_name],
+                takeeofftimeFL,
+                landingtimeFL,
+            )
+
+            reference_pressure = (
+                self.flight_computer.df[self.pressure_column]
+                .loc[takeeofftimeFL - walktime : takeeofftimeFL]
+                .mean()
+            )
+
+            print(reference_pressure)
+
+            # Match the pressure measurements
+            instrument.df["pressure_corr"] = matchpress(
+                instrument.df["pressure_detrend"],
+                reference_pressure,
+                takeeofftimeFL,
+                walktime,
+            )
+
+            print(
+                f"Cross-correlation applied to {instrument.name} pressure "
+                "measurements, on column 'pressure_corr'."
+            )
+
+        fig = go.Figure()
+
+        for instrument in self._instruments:
+            if "pressure_corr" not in instrument.df.columns:
+                print(
+                    f"Note: {instrument.name} does not have a corrected pressure "
+                    "column"
+                )
+                continue
+            fig.add_trace(
+                go.Scatter(
+                    x=instrument.df.index,
+                    y=instrument.df["pressure_corr"],
+                    name=f"{instrument.name}_corrected",
                 )
             )
 
