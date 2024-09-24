@@ -5,6 +5,7 @@ from helikite.instruments.base import Instrument
 from helikite.constants import constants
 import plotly.graph_objects as go
 import numpy as np
+from plotly.subplots import make_subplots
 
 
 class Cleaner:
@@ -496,3 +497,73 @@ class Cleaner:
         )
 
         fig.show()
+
+    def select_point(self):
+        """Creates a plot to select pressure points and save them"""
+
+        # Create a figure widget for interactive plotting
+        fig = go.FigureWidget()
+
+        # Initialize the list to store selected pressure points
+        self.selected_pressure_points = []
+
+        # Iterate through instruments to plot pressure data
+        for instrument in self._instruments:
+            # if instrument != self.flight_computer:
+            # continue
+            # Check if the pressure column exists in the instrument dataframe
+            if self.pressure_column not in instrument.df.columns:
+                print(
+                    f"Note: {instrument.name} does not have a pressure column"
+                )
+                continue
+
+            # Add pressure trace to the plot
+            fig.add_trace(
+                go.Scattergl(
+                    x=instrument.df.index,
+                    y=instrument.df[self.pressure_column],
+                    name=instrument.name,
+                    mode="lines+markers",
+                )
+            )
+
+        # Callback function for click events to select points
+        def select_point_callback(trace, points, selector):
+            if points.point_inds:
+                print(
+                    "Click event detected!"
+                )  # Debug: Check if click event triggers
+                point_index = points.point_inds[
+                    0
+                ]  # Get the first clicked point
+                selected_x = trace.x[
+                    point_index
+                ]  # Get selected x value (time)
+                selected_y = trace.y[
+                    point_index
+                ]  # Get selected y value (pressure)
+                print(
+                    f"Clicked point: Time={selected_x}, Pressure={selected_y} trace={trace.name}"
+                )
+                # Add the point to the list
+                self.selected_pressure_points.append((selected_x, selected_y))
+
+        # Attach the callback to all traces
+        for trace in fig.data:
+            trace.on_click(select_point_callback)
+            print(f"Callback attached to trace: {trace.name}")
+
+        # Customize plot layout
+        fig.update_layout(
+            title="Select Pressure Points",
+            xaxis_title="Time",
+            yaxis_title="Pressure (hPa)",
+            hovermode="closest",
+            showlegend=True,
+            height=600,
+            width=800,
+        )
+
+        # Show plot with interactive click functionality
+        return fig
