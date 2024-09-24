@@ -47,7 +47,7 @@ class POPS(Instrument):
         df["DateTime"] = pd.to_datetime(df["DateTime"], unit="s")
 
         # Round the milliseconds to the nearest second
-        df["DateTime"] = pd.to_datetime(df.DateTime).round("s")
+        df["DateTime"] = pd.to_datetime(df.DateTime).dt.round("1s")
 
         # Define the datetime column as the index
         df.set_index("DateTime", inplace=True)

@@ -5,13 +5,13 @@ from helikite.instruments.base import Instrument
 from helikite.constants import constants
 import plotly.graph_objects as go
 import numpy as np
-from plotly.subplots import make_subplots
 
 
 class Cleaner:
     def __init__(
         self,
         instruments: list[Instrument],
+        reference_instrument: Instrument,
         input_folder: str,
         flight_date: datetime.date,
         time_trim_from: datetime.datetime | None = None,
@@ -28,6 +28,7 @@ class Cleaner:
         self.master_df: pd.DataFrame | None = None
         self.housekeeping_df: pd.DataFrame | None = None
         self.rolling_window_pressure_column_name: str = "pressure_rn"
+        self.reference_instrument: Instrument = reference_instrument
 
         # Create an attribute from each instrument.name
         for instrument in instruments:
@@ -365,139 +366,6 @@ class Cleaner:
 
         fig.show()
 
-    def apply_cross_correlation_to_pressure(self, walk_time: int = 60):
-        def matchpress(
-            dfpressure: pd.DataFrame,
-            refpresFC: float,
-            takeofftimeFL: pd.Timestamp,
-            walktime: pd.Timedelta,
-        ):
-            # correct the other instrument pressure with the reference pressure
-
-            try:
-                diffpress = (
-                    dfpressure.loc[
-                        takeofftimeFL - walktime : takeofftimeFL
-                    ].mean()
-                    - refpresFC
-                )
-                dfprescorr = dfpressure.sub(np.float64(diffpress))
-
-            # catch when df1 is None
-            except AttributeError:
-                pass
-            # catch when it hasn't even been defined
-            except NameError:
-                pass
-
-            return dfprescorr
-
-        def presdetrend(
-            dfpressure: pd.DataFrame,
-            takeofftimeFL: pd.Timestamp,
-            landingtimeFL: pd.Timestamp,
-        ):
-            linearfit = np.linspace(
-                dfpressure.loc[takeofftimeFL],
-                dfpressure.loc[landingtimeFL],
-                len(dfpressure),
-            )
-            dfdetrend = dfpressure - linearfit + dfpressure.loc[takeofftimeFL]
-
-            return dfdetrend
-
-        reference_instrument = self.flight_computer
-        if self.flight_computer not in self._instruments:
-            print(
-                "Flight computer not found in instruments. "
-                "Necessary for cross-correlation."
-            )
-            return
-
-        walktime = pd.to_timedelta(walk_time, unit="s")
-
-        for instrument in self._instruments:
-            if instrument == reference_instrument:
-                continue
-            # takeeofftimeFL = instrument.df.index.asof(self.time_trim_from)
-            # landingtimeFL = instrument.df.index.asof(self.time_trim_to)
-            # takeeofftimeFL = pd.Timestamp(self.time_trim_from)
-            # landingtimeFL = pd.Timestamp(self.time_trim_to)
-
-            takeeofftimeFL = instrument.df.index[0]
-            landingtimeFL = instrument.df.index[-1]
-
-            if (
-                self.rolling_window_pressure_column_name
-                not in instrument.df.columns
-            ):
-                print(
-                    f"Note: {instrument.name} does not have a rolling window "
-                    "pressure column"
-                )
-                continue
-            # Detrend the pressure measurements
-            instrument.df["pressure_detrend"] = presdetrend(
-                instrument.df[self.rolling_window_pressure_column_name],
-                takeeofftimeFL,
-                landingtimeFL,
-            )
-
-            reference_pressure = (
-                self.flight_computer.df[self.pressure_column]
-                .loc[takeeofftimeFL - walktime : takeeofftimeFL]
-                .mean()
-            )
-
-            print(reference_pressure)
-
-            # Match the pressure measurements
-            instrument.df["pressure_corr"] = matchpress(
-                instrument.df["pressure_detrend"],
-                reference_pressure,
-                takeeofftimeFL,
-                walktime,
-            )
-
-            print(
-                f"Cross-correlation applied to {instrument.name} pressure "
-                "measurements, on column 'pressure_corr'."
-            )
-
-        fig = go.Figure()
-
-        for instrument in self._instruments:
-            if "pressure_corr" not in instrument.df.columns:
-                print(
-                    f"Note: {instrument.name} does not have a corrected pressure "
-                    "column"
-                )
-                continue
-            fig.add_trace(
-                go.Scatter(
-                    x=instrument.df.index,
-                    y=instrument.df["pressure_corr"],
-                    name=f"{instrument.name}_corrected",
-                )
-            )
-
-        fig.update_layout(
-            title="Pressure measurements",
-            xaxis_title="Time",
-            yaxis_title="Pressure (hPa)",
-            legend=dict(
-                title="Instruments",
-                yanchor="top",
-                y=1,
-                xanchor="left",
-                x=1.05,
-                orientation="v",
-            ),
-            margin=dict(l=40, r=150, t=50, b=40),
-        )
-
-        fig.show()
-
     def select_point(self):
         """Creates a plot to select pressure points and save them"""
 
@@ -531,20 +399,13 @@ class Cleaner:
         # Callback function for click events to select points
         def select_point_callback(trace, points, selector):
             if points.point_inds:
+                print("Click event detected!")
+                point_index = points.point_inds[0]
+                selected_x = trace.x[point_index]
+                selected_y = trace.y[point_index]
                 print(
-                    "Click event detected!"
-                )  # Debug: Check if click event triggers
-                point_index = points.point_inds[
-                    0
-                ]  # Get the first clicked point
-                selected_x = trace.x[
-                    point_index
-                ]  # Get selected x value (time)
-                selected_y = trace.y[
-                    point_index
-                ]  # Get selected y value (pressure)
-                print(
-                    f"Clicked point: Time={selected_x}, Pressure={selected_y} trace={trace.name}"
+                    f"Clicked point: Time={selected_x}, Pressure={selected_y} "
+                    f"trace={trace.name}"
                 )
                 # Add the point to the list
                 self.selected_pressure_points.append((selected_x, selected_y))
@@ -567,3 +428,145 @@ class Cleaner:
 
         # Show plot with interactive click functionality
         return fig
+
+    ###
+
+    def crosscorr(self, datax, datay, lag=0):
+        """Lag-N cross correlation."""
+        return datax.corr(datay.shift(lag))
+
+    def find_time_lag(self, max_lag=180):
+        """Find time lag between instrument and reference pressure"""
+        if self.pressure_column not in self.reference_instrument.df.columns:
+            raise KeyError(
+                f"Pressure column '{self.pressure_column}' not found in "
+                "reference instrument '{self.reference_instrument.name}'"
+            )
+
+        ref_pressure = self.reference_instrument.df[
+            self.pressure_column
+        ].dropna()
+        ref_pressure = ref_pressure.sort_index()
+
+        lag_results = {}
+
+        for instrument in self._instruments:
+            if instrument == self.reference_instrument:
+                continue
+
+            # Check if the pressure column exists in this instrument
+            if self.pressure_column not in instrument.df.columns:
+                print(
+                    f"Skipping {instrument.name}: '{self.pressure_column}' "
+                    "column not found."
+                )
+                continue
+
+            instrument_pressure = instrument.df[self.pressure_column].dropna()
+            instrument_pressure = instrument_pressure.sort_index()
+
+            # Align the indexes between the reference and current instrument
+            common_index = ref_pressure.index.intersection(
+                instrument_pressure.index
+            )
+            if len(common_index) == 0:
+                print(
+                    f"No common data between {self.reference_instrument.name} "
+                    "and {instrument.name}. Skipping..."
+                )
+                continue
+
+            ref_pressure_aligned = ref_pressure.loc[common_index]
+            inst_pressure_aligned = instrument_pressure.loc[common_index]
+
+            if (
+                len(ref_pressure_aligned) == 0
+                or len(inst_pressure_aligned) == 0
+            ):
+                print(
+                    f"No valid overlapping data for {instrument.name}. "
+                    "Skipping..."
+                )
+                continue
+
+            # Compute cross-correlation for different lags
+            lags = range(-max_lag, max_lag + 1)
+            corrs = [
+                self.crosscorr(
+                    ref_pressure_aligned, inst_pressure_aligned, lag
+                )
+                for lag in lags
+            ]
+            best_lag = lags[
+                np.nanargmax(corrs)
+            ]  # Find the lag with max correlation, ignoring NaNs
+
+            print(f"Best lag for {instrument.name}: {best_lag} seconds")
+
+            # Store the lag
+            lag_results[instrument.name] = best_lag
+
+        return lag_results
+
+    def correct_time_and_pressure(self, lag_results):
+        """Correct time and pressure for each instrument based on time lag."""
+        ref_pressure = self.reference_instrument.df[
+            self.pressure_column
+        ].dropna()
+
+        for instrument in self._instruments:
+            if instrument.name in lag_results:
+                best_lag = lag_results[instrument.name]
+
+                # Shift time index
+                instrument.df.index = instrument.df.index.shift(
+                    -best_lag, freq="s"
+                )
+                print(f"Shifted {instrument.name} by {best_lag} seconds")
+
+                # Align pressures based on the reference instrument
+                inst_pressure = instrument.df[self.pressure_column].dropna()
+
+                # Get the common time index again after shifting
+                common_index = ref_pressure.index.intersection(
+                    instrument.df.index
+                )
+
+                if len(common_index) == 0:
+                    print(
+                        "No overlapping data between "
+                        f"{self.reference_instrument.name} and "
+                        f"{instrument.name} after shifting. Skipping pressure "
+                        "alignment."
+                    )
+                    continue
+
+                # Subtract the mean difference in pressure during the common
+                # time window
+                ref_pressure_aligned = ref_pressure.loc[common_index]
+                inst_pressure_aligned = inst_pressure.loc[common_index]
+
+                # Calculate the mean difference in pressure
+                mean_diff = (
+                    inst_pressure_aligned.mean() - ref_pressure_aligned.mean()
+                )
+
+                # Adjust the instrument's pressure by subtracting the mean
+                # difference
+                instrument.df[self.pressure_column] = (
+                    instrument.df[self.pressure_column] - mean_diff
+                )
+                print(
+                    f"Adjusted pressure for {instrument.name} by "
+                    f"{mean_diff:.2f} hPa"
+                )
+
+    def apply_cross_correlation_to_pressure(self, max_lag=180):
+        """Main method to apply cross-correlation and correct time shifts."""
+        # Step 1: Find the time lag for each instrument
+        lag_results = self.find_time_lag(max_lag=max_lag)
+
+        print("Lag results:", lag_results)
+
+        # Step 2: Correct time shifts and align pressures for each instrument
+        self.correct_time_and_pressure(lag_results)
