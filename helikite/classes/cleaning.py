@@ -7,6 +7,50 @@ import plotly.graph_objects as go
 import numpy as np
 
 
+def function_dependencies(required_operations: list[str] = [], use_once=False):
+    """A decorator to enforce that a method can only run if the required
+    operations have been completed and not rerun.
+
+    If used without a list, the function can only run once.
+    """
+
+    def decorator(func):
+        def wrapper(self, *args, **kwargs):
+            # Check if the function has already been completed
+            if use_once and func.__name__ in self._completed_operations:
+                print(
+                    f"The operation '{func.__name__}' has already been "
+                    "completed and cannot be run again."
+                )
+                return
+
+            functions_required = []
+            # Ensure all required operations have been completed
+            for operation in required_operations:
+                if operation not in self._completed_operations:
+                    functions_required.append(operation)
+
+            if functions_required:
+                print(
+                    f"This function '{func.__name__}()' requires the "
+                    "following operations first: "
+                    f"{'(), '.join(functions_required)}()."
+                )
+                return  # Halt execution of the function if dependency missing
+
+            # Run the function
+            result = func(self, *args, **kwargs)
+
+            # Mark the function as completed
+            self._completed_operations.append(func.__name__)
+
+            return result
+
+        return wrapper
+
+    return decorator
+
+
 class Cleaner:
     def __init__(
         self,
@@ -29,6 +73,8 @@ class Cleaner:
         self.housekeeping_df: pd.DataFrame | None = None
         self.rolling_window_pressure_column_name: str = "pressure_rn"
         self.reference_instrument: Instrument = reference_instrument
+
+        self._completed_operations: list[str] = []
 
         # Create an attribute from each instrument.name
         for instrument in instruments:
@@ -58,6 +104,7 @@ class Cleaner:
         for instrument in self._instruments:
             print(f"Cleaner.{instrument.name} ({len(instrument.df)} records)")
 
+    @function_dependencies(use_once=True)
     def set_pressure_column(
         self,
         column_name: str = constants.HOUSEKEEPING_VAR_PRESSURE,
@@ -82,6 +129,7 @@ class Cleaner:
 
         self.print_success_errors("pressure column", success, errors)
 
+    @function_dependencies([], use_once=True)
     def set_time_as_index(self) -> None:
         success = []
         errors = []
@@ -95,6 +143,7 @@ class Cleaner:
 
         self.print_success_errors("time as index", success, errors)
 
+    @function_dependencies(["set_time_as_index"], use_once=True)
     def correct_time(
         self,
         trim_start: pd.Timestamp | None = None,
@@ -129,6 +178,7 @@ class Cleaner:
 
         self.print_success_errors("time corrections", success, errors)
 
+    @function_dependencies(["set_time_as_index"], use_once=True)
     def data_corrections(
         self,
         start_altitude: float = None,
@@ -152,6 +202,13 @@ class Cleaner:
 
         self.print_success_errors("data corrections", success, errors)
 
+    @function_dependencies(
+        [
+            "set_time_as_index",
+            "set_pressure_column",
+        ],
+        use_once=False,
+    )
     def plot_pressure(self) -> None:
         """Creates a plot with the pressure measurement of each instrument
 
@@ -192,6 +249,7 @@ class Cleaner:
 
         fig.show()
 
+    @function_dependencies(["set_time_as_index"], use_once=True)
     def remove_duplicates(self) -> None:
 
         success = []
@@ -219,6 +277,14 @@ class Cleaner:
         for error in errors:
             print(f"Error ({error[0]}): {error[1]}")
 
+    @function_dependencies(
+        [
+            "set_time_as_index",
+            "data_corrections",
+            "correct_time",
+        ],
+        use_once=False,
+    )
     def merge_instruments(self):
         """Merges all of the dataframes from the instruments and exports them
 
@@ -262,6 +328,16 @@ class Cleaner:
 
         print("The master dataframe has been created at Cleaner.master_df.")
 
+    @function_dependencies(
+        [
+            "merge_instruments",
+            "set_pressure_column",
+            "set_time_as_index",
+            "correct_time",
+            "remove_duplicates",
+        ],
+        use_once=False,
+    )
     def export_data(
         self,
         master_filename: str = "master.csv",
@@ -314,6 +390,16 @@ class Cleaner:
             "order defined in each instrument's class."
         )
 
+    @function_dependencies(
+        [
+            "merge_instruments",
+            "set_pressure_column",
+            "set_time_as_index",
+            "correct_time",
+            "remove_duplicates",
+        ],
+        use_once=True,
+    )
     def apply_rolling_window_to_pressure(self, window_size: int = 20):
         """Apply rolling window to the pressure measurements of each instrument
 
@@ -366,6 +452,16 @@ class Cleaner:
 
         fig.show()
 
+    @function_dependencies(
+        [
+            "merge_instruments",
+            "set_pressure_column",
+            "set_time_as_index",
+            "correct_time",
+            "remove_duplicates",
+        ],
+        use_once=False,
+    )
     def select_point(self):
         """Creates a plot to select pressure points and save them"""
 
@@ -428,8 +524,6 @@ class Cleaner:
 
         # Show plot with interactive click functionality
         return fig
-
-    ###
 
     def crosscorr(self, datax, datay, lag=0):
         """Lag-N cross correlation."""
@@ -561,6 +655,16 @@ class Cleaner:
                     f"{mean_diff:.2f} hPa"
                 )
 
+    @function_dependencies(
+        [
+            "merge_instruments",
+            "set_pressure_column",
+            "set_time_as_index",
+            "correct_time",
+            "remove_duplicates",
+        ],
+        use_once=False,
+    )
     def apply_cross_correlation_to_pressure(self, max_lag=180):
         """Main method to apply cross-correlation and correct time shifts."""
         # Step 1: Find the time lag for each instrument
