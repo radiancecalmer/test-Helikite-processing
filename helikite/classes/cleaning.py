@@ -5,6 +5,8 @@ from helikite.instruments.base import Instrument
 from helikite.constants import constants
 import plotly.graph_objects as go
 import numpy as np
+import inspect
+from functools import wraps
 
 
 def function_dependencies(required_operations: list[str] = [], use_once=False):
@@ -15,6 +17,7 @@ def function_dependencies(required_operations: list[str] = [], use_once=False):
     """
 
     def decorator(func):
+        @wraps(func)  # This will preserve the original docstring and signature
         def wrapper(self, *args, **kwargs):
             # Check if the function has already been completed
             if use_once and func.__name__ in self._completed_operations:
@@ -92,23 +95,139 @@ class Cleaner:
             setattr(self, instrument.name, instrument)
             self._instruments.append(instrument)
 
-        self.print_instruments()
-        print(
-            "Helikite Cleaner has been initialised. Each instrument has "
-            "been assigned a df attribute where processing changes will ",
-            "occur, and an untouched df_raw. For example: "
-            "Cleaner.flight_computer.df",
+    def state(self):
+        """Prints the current state of the Cleaner class in a tabular format"""
+
+        # Create a list to store the state in a formatted way
+        state_info = []
+
+        # Add instrument information
+        state_info.append(
+            f"{'Instrument':<20}{'Records':<10}{'Reference':<10}"
+        )
+        state_info.append("-" * 40)
+
+        for instrument in self._instruments:
+            reference = (
+                "Yes" if instrument == self.reference_instrument else "No"
+            )
+            state_info.append(
+                f"{instrument.name:<20}{len(instrument.df):<10}{reference:<10}"
+            )
+
+        # Add general settings
+        state_info.append("\n")
+        state_info.append(f"{'Property':<25}{'Value':<30}")
+        state_info.append("-" * 55)
+        state_info.append(f"{'Input folder':<25}{self.input_folder:<30}")
+        state_info.append(f"{'Flight date':<25}{self.flight_date:<30}")
+        state_info.append(
+            f"{'Time trim from':<25}{str(self.time_trim_from):<30}"
+        )
+        state_info.append(f"{'Time trim to':<25}{str(self.time_trim_to):<30}")
+        state_info.append(f"{'Time offset':<25}{str(self.time_offset):<30}")
+        state_info.append(f"{'Pressure column':<25}{self.pressure_column:<30}")
+
+        # Add dataframe information
+        master_df_status = (
+            f"{len(self.master_df)} records"
+            if self.master_df is not None and not self.master_df.empty
+            else "Not available"
+        )
+        housekeeping_df_status = (
+            f"{len(self.housekeeping_df)} records"
+            if self.housekeeping_df is not None
+            and not self.housekeeping_df.empty
+            else "Not available"
         )
 
-    def print_instruments(self) -> None:
+        state_info.append(f"{'Master dataframe':<25}{master_df_status:<30}")
+        state_info.append(
+            f"{'Housekeeping dataframe':<25}{housekeeping_df_status:<30}"
+        )
+
+        # Add selected pressure points info
+        selected_points_status = (
+            f"{len(self.selected_pressure_points)}"
+            if hasattr(self, "selected_pressure_points")
+            else "Not available"
+        )
+        state_info.append(
+            f"{'Selected pressure points':<25}{selected_points_status:<30}"
+        )
+
+        # Add rolling window pressure column info
+        state_info.append(
+            f"{'Rolling window column':<25}"
+            f"{self.rolling_window_pressure_column_name:<30}"
+        )
+
+        # Add the functions that have been called and completed
+        state_info.append("\nCompleted operations")
+        state_info.append("-" * 30)
+
+        if len(self._completed_operations) == 0:
+            state_info.append("No operations have been completed.")
+
+        for operation in self._completed_operations:
+            state_info.append(f"{operation:<25}")
+
+        # Print all the collected info in a nicely formatted layout
+        print("\n".join(state_info))
+        print()
+
+    def help(self):
+        """Prints available methods and their first-line docstrings in a clean format."""
+
+        print("Completed operations")
+        print("-" * 30)
+        if len(self._completed_operations) == 0:
+            print("No operations have been completed.")
+        else:
+            for operation in self._completed_operations:
+                print(f"- {operation}")
+        print("\nThere are several methods available to clean the data:")
+
+        methods = inspect.getmembers(self, predicate=inspect.ismethod)
+        for name, method in methods:
+            if not name.startswith("_"):
+                # Get method signature (arguments)
+                signature = inspect.signature(method)
+
+                # Print method name and signature
+                print(f"- {name}{signature}")
+
+                # Get the first line of the method docstring
+                docstring = inspect.getdoc(method)
+                if docstring:
+                    first_line = docstring.splitlines()[
+                        0
+                    ]  # Get only the first line
+                    print(f"\t{first_line}")
+                else:
+                    print("\tNo docstring available.")
+
+    def _print_instruments(self) -> None:
+        print(
+            f"Helikite Cleaner has been initialised with "
+            f"{len(self._instruments)} instruments."
+        )
         for instrument in self._instruments:
-            print(f"Cleaner.{instrument.name} ({len(instrument.df)} records)")
+            print(
+                f"- Cleaner.{instrument.name}.df ({len(instrument.df)} records)",
+                end="",
+            )
+            if instrument == self.reference_instrument:
+                print(" (reference)")
+            else:
+                print()
 
     @function_dependencies(use_once=True)
     def set_pressure_column(
         self,
         column_name: str = constants.HOUSEKEEPING_VAR_PRESSURE,
     ) -> None:
+        """Set the pressure column for each instrument's dataframe"""
 
         success = []
         errors = []
@@ -127,10 +246,12 @@ class Cleaner:
             except Exception as e:
                 errors.append((instrument.name, e))
 
-        self.print_success_errors("pressure column", success, errors)
+        self._print_success_errors("pressure column", success, errors)
 
     @function_dependencies([], use_once=True)
     def set_time_as_index(self) -> None:
+        """Set the time column as the index for each instrument dataframe"""
+
         success = []
         errors = []
 
@@ -141,7 +262,7 @@ class Cleaner:
             except Exception as e:
                 errors.append((instrument.name, e))
 
-        self.print_success_errors("time as index", success, errors)
+        self._print_success_errors("time as index", success, errors)
 
     @function_dependencies(["set_time_as_index"], use_once=True)
     def correct_time(
@@ -149,6 +270,7 @@ class Cleaner:
         trim_start: pd.Timestamp | None = None,
         trim_end: pd.Timestamp | None = None,
     ) -> None:
+        """Corrects the time of each instrument based on the time offset"""
 
         success = []
         errors = []
@@ -176,7 +298,7 @@ class Cleaner:
             except Exception as e:
                 errors.append((instrument.name, e))
 
-        self.print_success_errors("time corrections", success, errors)
+        self._print_success_errors("time corrections", success, errors)
 
     @function_dependencies(["set_time_as_index"], use_once=True)
     def data_corrections(
@@ -200,7 +322,7 @@ class Cleaner:
             except Exception as e:
                 errors.append((instrument.name, e))
 
-        self.print_success_errors("data corrections", success, errors)
+        self._print_success_errors("data corrections", success, errors)
 
     @function_dependencies(
         [
@@ -251,6 +373,7 @@ class Cleaner:
 
     @function_dependencies(["set_time_as_index"], use_once=True)
     def remove_duplicates(self) -> None:
+        """Remove duplicate rows from each instrument dataframe based on the time index"""
 
         success = []
         errors = []
@@ -261,9 +384,9 @@ class Cleaner:
             except Exception as e:
                 errors.append((instrument.name, e))
 
-        self.print_success_errors("duplicate removal", success, errors)
+        self._print_success_errors("duplicate removal", success, errors)
 
-    def print_success_errors(
+    def _print_success_errors(
         self,
         operation: str,
         success: list[str],
@@ -463,7 +586,7 @@ class Cleaner:
         use_once=False,
     )
     def select_point(self):
-        """Creates a plot to select pressure points and save them"""
+        """Creates a plot to select pressure points and save them (Work in progress)"""
 
         # Create a figure widget for interactive plotting
         fig = go.FigureWidget()
@@ -525,11 +648,11 @@ class Cleaner:
         # Show plot with interactive click functionality
         return fig
 
-    def crosscorr(self, datax, datay, lag=0):
+    def _crosscorr(self, datax, datay, lag=0):
         """Lag-N cross correlation."""
         return datax.corr(datay.shift(lag))
 
-    def find_time_lag(self, max_lag=180):
+    def _find_time_lag(self, max_lag=180):
         """Find time lag between instrument and reference pressure"""
         if self.pressure_column not in self.reference_instrument.df.columns:
             raise KeyError(
@@ -586,7 +709,7 @@ class Cleaner:
             # Compute cross-correlation for different lags
             lags = range(-max_lag, max_lag + 1)
             corrs = [
-                self.crosscorr(
+                self._crosscorr(
                     ref_pressure_aligned, inst_pressure_aligned, lag
                 )
                 for lag in lags
@@ -602,8 +725,22 @@ class Cleaner:
 
         return lag_results
 
-    def correct_time_and_pressure(self, lag_results):
+    @function_dependencies(
+        [
+            "merge_instruments",
+            "set_pressure_column",
+            "set_time_as_index",
+            "correct_time",
+            "remove_duplicates",
+        ],
+        use_once=False,
+    )
+    def correct_time_and_pressure(self, max_lag=180):
         """Correct time and pressure for each instrument based on time lag."""
+
+        lag_results = self._find_time_lag(max_lag=max_lag)
+        print("Lag results:", lag_results)
+
         ref_pressure = self.reference_instrument.df[
             self.pressure_column
         ].dropna()
@@ -654,23 +791,3 @@ class Cleaner:
                     f"Adjusted pressure for {instrument.name} by "
                     f"{mean_diff:.2f} hPa"
                 )
-
-    @function_dependencies(
-        [
-            "merge_instruments",
-            "set_pressure_column",
-            "set_time_as_index",
-            "correct_time",
-            "remove_duplicates",
-        ],
-        use_once=False,
-    )
-    def apply_cross_correlation_to_pressure(self, max_lag=180):
-        """Main method to apply cross-correlation and correct time shifts."""
-        # Step 1: Find the time lag for each instrument
-        lag_results = self.find_time_lag(max_lag=max_lag)
-
-        print("Lag results:", lag_results)
-
-        # Step 2: Correct time shifts and align pressures for each instrument
-        self.correct_time_and_pressure(lag_results)
