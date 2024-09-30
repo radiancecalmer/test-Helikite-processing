@@ -83,12 +83,15 @@ def execute(
     output_folder: str = constants.OUTPUTS_FOLDER,
 ) -> None:
     """Execute the main processing and plotting of the data"""
+    try:
+        config = preprocess.read_yaml_config(
+            os.path.join(input_folder, config_file)
+        )
 
-    config = preprocess.read_yaml_config(
-        os.path.join(input_folder, config_file)
-    )
-
-    main(config=config, output_path=output_folder)
+        main(config=config, output_path=output_folder)
+    except Exception as e:
+        logger.error(f"Error in processing: {e}")
+        raise e
 
 
 def main(
@@ -110,7 +113,7 @@ def main(
 
     # Create a folder with the current UTC time in outputs
     output_path_with_time = os.path.join(
-        output_path, datetime.datetime.utcnow().isoformat()
+        output_path, datetime.datetime.now(datetime.UTC).isoformat()
     )
     output_path_instrument_subfolder = os.path.join(
         output_path_with_time, constants.OUTPUTS_INSTRUMENT_SUBFOLDER
@@ -134,6 +137,10 @@ def main(
 
     ground_station = config["ground_station"]
     plot_props = config["plots"]
+
+    if "instruments" not in config:
+        logger.error("No instruments found in configuration, exiting")
+        return
 
     # Go through each instrument and perform the operations on each instrument
     for instrument, props in config["instruments"].items():
@@ -183,6 +190,10 @@ def main(
 
         # Add tuple of df and export order to df merge list
         all_export_dfs.append((df, instrument_obj))
+
+    if len(all_export_dfs) == 0:
+        logger.error("No instruments were processed, exiting")
+        return
 
     preprocess.export_yaml_config(
         config, os.path.join(output_path_with_time, constants.CONFIG_FILE)

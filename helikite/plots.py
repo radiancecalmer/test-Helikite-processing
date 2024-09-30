@@ -524,7 +524,7 @@ def generate_particle_heatmap(
     )
     fig.update_yaxes(
         type="log",
-        range=(np.log10(y.mean()[0]), np.log10(y.mean()[-1])),
+        range=(np.log10(y.mean().iloc[0]), np.log10(y.mean().iloc[-1])),
         tickformat="f",
         nticks=4,
     )
@@ -554,7 +554,7 @@ def generate_particle_heatmap(
     )
     fig.update_yaxes(
         type="log",
-        range=(np.log10(y.mean()[0]), np.log10(y.mean()[-1])),
+        range=(np.log10(y.mean().iloc[0]), np.log10(y.mean().iloc[-1])),
         tickformat="f",
         nticks=4,
     )

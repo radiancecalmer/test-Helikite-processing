@@ -60,7 +60,7 @@ def preprocess(
     print_preprocess_stats(yaml_config)
     export_yaml_config(
         yaml_config,
-        os.path.join(constants.INPUTS_FOLDER, constants.CONFIG_FILE),
+        os.path.join(input_folder, config_file),
     )
 
 
@@ -78,7 +78,7 @@ def print_preprocess_stats(yaml_config):
     logger.info(f"Found:   {len(found)}: {', '.join(found)}")
 
 
-def export_yaml_config(yaml_config, out_location=constants.CONFIG_FILE):
+def export_yaml_config(yaml_config, out_location):
     logger.info(f"Writing YAML config to {out_location}")
     # Update YAML (will remove all commented out inputs)
     with open(out_location, "w") as in_yaml:
