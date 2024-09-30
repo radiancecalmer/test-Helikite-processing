@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 import numpy as np
 import inspect
 from functools import wraps
+from ipywidgets import Output, VBox
 
 
 def function_dependencies(required_operations: list[str] = [], use_once=False):
@@ -577,23 +578,104 @@ class Cleaner:
 
     @function_dependencies(
         [
-            "merge_instruments",
             "set_pressure_column",
             "set_time_as_index",
-            "correct_time",
-            "remove_duplicates",
+            # "correct_time",
+            # "remove_duplicates",
         ],
         use_once=False,
     )
-    def select_point(self):
-        """Creates a plot to select pressure points and save them (Work in progress)"""
+    def define_flight_times(self):
+        """Creates a plot to select the start and end of the flight
+
+        Uses the pressure measurements of the reference instrument to select
+        the start and end of the flight. The user can click on the plot to
+        select the points.
+
+        The time of the selected points will be used to trim the dataframes.
+        """
 
         # Create a figure widget for interactive plotting
         fig = go.FigureWidget()
+        out = Output()
 
         # Initialize the list to store selected pressure points
         self.selected_pressure_points = []
 
+        @out.capture(clear_output=True)
+        def select_point_callback(trace, points, selector):
+            # Callback function for click events to select points
+            if points.point_inds:
+                point_index = points.point_inds[0]
+                selected_x = trace.x[point_index]
+                print(f"Start time: {self.time_trim_from}")
+                print(f"End time: {self.time_trim_to}")
+
+                # Add a message if the start/end time has not been satisfied.
+                # As we are clicking on a point to define it, the next click
+                # should be the end time. If both are set, then it will be
+                # reset.
+                if (self.time_trim_from is None) or (
+                    self.time_trim_from is not None
+                    and self.time_trim_to is not None
+                ):
+                    # Set the start time, and reset the end time
+                    self.time_trim_from = selected_x
+                    self.time_trim_to = None
+                    print("Click to set the end time.")
+                elif (
+                    self.time_trim_from is not None
+                    and self.time_trim_to is None
+                ):
+                    # Set the end time
+                    self.time_trim_to = selected_x
+                    print(
+                        "Click again if you wish to reset the times and set "
+                        "a new start time"
+                    )
+                else:
+                    print("Something went wrong with the time selection.")
+
+                # # Add the point to the list
+                # self.selected_pressure_points.append((selected_x, selected_y))
+
+            # Update the plot if self.time_trim_from and self.time_trim_to
+            # have been set or modified
+            if (
+                self.time_trim_from is not None
+                and self.time_trim_to is not None
+            ):
+                # If there is a vrect, delete it and add a new one. First,
+                # find the vrect shape
+                shapes = [
+                    shape
+                    for shape in fig.layout.shapes
+                    if shape["type"] == "rect"
+                ]
+
+                # If there is a vrect, delete it
+                if shapes:
+                    fig.layout.shapes = []
+
+                # Add a new vrect
+                fig.add_vrect(
+                    x0=self.time_trim_from,
+                    x1=self.time_trim_to,
+                    fillcolor="rgba(0, 128, 0, 0.5)",
+                    layer="below",
+                    line_width=0,
+                )
+
+        # Add the initial time range to the plot
+        if self.time_trim_from is not None and self.time_trim_to is not None:
+            # Add a new vrect
+            fig.add_vrect(
+                x0=self.time_trim_from,
+                x1=self.time_trim_to,
+                fillcolor="rgba(0, 128, 0, 0.5)",
+                layer="below",
+                line_width=0,
+            )
         # Iterate through instruments to plot pressure data
         for instrument in self._instruments:
             # if instrument != self.flight_computer:
@@ -605,34 +687,37 @@ class Cleaner:
                 )
                 continue
 
-            # Add pressure trace to the plot
-            fig.add_trace(
-                go.Scattergl(
-                    x=instrument.df.index,
-                    y=instrument.df[self.pressure_column],
-                    name=instrument.name,
-                    mode="lines+markers",
+            # Add pressure trace to the plot. If it is the reference
+            # instrument, plot it with a thicker/darker line, otherwise,
+            # plot it lightly with some transparency.
+            if instrument == self.reference_instrument:
+                fig.add_trace(
+                    go.Scatter(
+                        x=instrument.df.index,
+                        y=instrument.df[self.pressure_column],
+                        name=instrument.name,
+                        line=dict(width=2, color="red"),
+                        opacity=1,
+                    )
                 )
-            )
-
-        # Callback function for click events to select points
-        def select_point_callback(trace, points, selector):
-            if points.point_inds:
-                print("Click event detected!")
-                point_index = points.point_inds[0]
-                selected_x = trace.x[point_index]
-                selected_y = trace.y[point_index]
-                print(
-                    f"Clicked point: Time={selected_x}, Pressure={selected_y} "
-                    f"trace={trace.name}"
+            else:
+                fig.add_trace(
+                    go.Scatter(
+                        x=instrument.df.index,
+                        y=instrument.df[self.pressure_column],
+                        name=instrument.name,
+                        line=dict(width=1, color="grey"),
+                        opacity=0.25,
+                        hoverinfo="skip",
+                    )
                 )
-                # Add the point to the list
-                self.selected_pressure_points.append((selected_x, selected_y))
 
         # Attach the callback to all traces
         for trace in fig.data:
-            trace.on_click(select_point_callback)
-            print(f"Callback attached to trace: {trace.name}")
+            # Only allow the reference instrument to be clickable
+            if trace.name == self.reference_instrument.name:
+                trace.on_click(select_point_callback)
+                print(f"Callback attached to trace: {trace.name}")
 
         # Customize plot layout
         fig.update_layout(
@@ -646,7 +731,8 @@ class Cleaner:
         )
 
         # Show plot with interactive click functionality
-        return fig
+        # return fig
+        return VBox([fig, out])
 
     def _crosscorr(self, datax, datay, lag=0):
         """Lag-N cross correlation."""
