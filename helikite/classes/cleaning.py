@@ -374,7 +374,7 @@ class Cleaner:
 
     @function_dependencies(["set_time_as_index"], use_once=True)
     def remove_duplicates(self) -> None:
-        """Remove duplicate rows from each instrument dataframe based on the time index"""
+        """Remove duplicate rows from each instrument based on time index"""
 
         success = []
         errors = []
@@ -580,8 +580,8 @@ class Cleaner:
         [
             "set_pressure_column",
             "set_time_as_index",
-            # "correct_time",
-            # "remove_duplicates",
+            "data_corrections",
+            "set_pressure_column",
         ],
         use_once=False,
     )
@@ -598,6 +598,10 @@ class Cleaner:
         # Create a figure widget for interactive plotting
         fig = go.FigureWidget()
         out = Output()
+        # out.append_stdout('Output appended with append_stdout')
+        out.append_stdout(f"\nStart time: {self.time_trim_from}\n")
+        out.append_stdout(f"End time: {self.time_trim_to}\n")
+        out.append_stdout("Click to set the start time.\n")
 
         # Initialize the list to store selected pressure points
         self.selected_pressure_points = []
@@ -608,8 +612,6 @@ class Cleaner:
             if points.point_inds:
                 point_index = points.point_inds[0]
                 selected_x = trace.x[point_index]
-                print(f"Start time: {self.time_trim_from}")
-                print(f"End time: {self.time_trim_to}")
 
                 # Add a message if the start/end time has not been satisfied.
                 # As we are clicking on a point to define it, the next click
@@ -622,6 +624,8 @@ class Cleaner:
                     # Set the start time, and reset the end time
                     self.time_trim_from = selected_x
                     self.time_trim_to = None
+                    print(f"Start time: {self.time_trim_from}")
+                    print(f"End time: {self.time_trim_to}")
                     print("Click to set the end time.")
                 elif (
                     self.time_trim_from is not None
@@ -629,15 +633,14 @@ class Cleaner:
                 ):
                     # Set the end time
                     self.time_trim_to = selected_x
+                    print(f"Start time: {self.time_trim_from}")
+                    print(f"End time: {self.time_trim_to}")
                     print(
                         "Click again if you wish to reset the times and set "
                         "a new start time"
                     )
                 else:
                     print("Something went wrong with the time selection.")
-
-                # # Add the point to the list
-                # self.selected_pressure_points.append((selected_x, selected_y))
 
             # Update the plot if self.time_trim_from and self.time_trim_to
             # have been set or modified
@@ -661,7 +664,7 @@ class Cleaner:
                 fig.add_vrect(
                     x0=self.time_trim_from,
                     x1=self.time_trim_to,
-                    fillcolor="rgba(0, 128, 0, 0.5)",
+                    fillcolor="rgba(0, 128, 0, 0.25)",
                     layer="below",
                     line_width=0,
                 )
@@ -672,14 +675,12 @@ class Cleaner:
             fig.add_vrect(
                 x0=self.time_trim_from,
                 x1=self.time_trim_to,
-                fillcolor="rgba(0, 128, 0, 0.5)",
+                fillcolor="rgba(0, 128, 0, 0.25)",
                 layer="below",
                 line_width=0,
             )
         # Iterate through instruments to plot pressure data
         for instrument in self._instruments:
-            # if instrument != self.flight_computer:
-            # continue
             # Check if the pressure column exists in the instrument dataframe
             if self.pressure_column not in instrument.df.columns:
                 print(
@@ -721,7 +722,7 @@ class Cleaner:
 
         # Customize plot layout
         fig.update_layout(
-            title="Select Pressure Points",
+            title="Select flight times",
             xaxis_title="Time",
             yaxis_title="Pressure (hPa)",
             hovermode="closest",
@@ -731,8 +732,7 @@ class Cleaner:
         )
 
         # Show plot with interactive click functionality
-        # return fig
-        return VBox([fig, out])
+        return VBox([fig, out])  # Use VBox to stack the plot and output
 
     def _crosscorr(self, datax, datay, lag=0):
         """Lag-N cross correlation."""
