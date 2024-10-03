@@ -50,6 +50,10 @@ def function_dependencies(required_operations: list[str] = [], use_once=False):
 
             return result
 
+        # Store dependencies and use_once information in the wrapper function
+        wrapper.__dependencies__ = required_operations
+        wrapper.__use_once__ = use_once
+
         return wrapper
 
     return decorator
@@ -96,6 +100,13 @@ class Cleaner:
             setattr(self, instrument.name, instrument)
             self._instruments.append(instrument)
 
+        print(
+            f"Helikite Cleaner has been initialised with "
+            f"{len(self._instruments)} instruments. Use the .state() method "
+            "to see the current state, and the .help() method to see the "
+            "available methods."
+        )
+
     def state(self):
         """Prints the current state of the Cleaner class in a tabular format"""
 
@@ -121,7 +132,7 @@ class Cleaner:
         state_info.append(f"{'Property':<25}{'Value':<30}")
         state_info.append("-" * 55)
         state_info.append(f"{'Input folder':<25}{self.input_folder:<30}")
-        state_info.append(f"{'Flight date':<25}{self.flight_date:<30}")
+        state_info.append(f"{'Flight date':<25}{self.flight_date}")
         state_info.append(
             f"{'Time trim from':<25}{str(self.time_trim_from):<30}"
         )
@@ -178,15 +189,8 @@ class Cleaner:
         print()
 
     def help(self):
-        """Prints available methods and their first-line docstrings in a clean format."""
+        """Prints available methods in a clean format"""
 
-        print("Completed operations")
-        print("-" * 30)
-        if len(self._completed_operations) == 0:
-            print("No operations have been completed.")
-        else:
-            for operation in self._completed_operations:
-                print(f"- {operation}")
         print("\nThere are several methods available to clean the data:")
 
         methods = inspect.getmembers(self, predicate=inspect.ismethod)
@@ -194,6 +198,11 @@ class Cleaner:
             if not name.startswith("_"):
                 # Get method signature (arguments)
                 signature = inspect.signature(method)
+                func_wrapper = getattr(self.__class__, name)
+
+                # Extract function dependencies and use_once details from the decorator
+                dependencies = getattr(func_wrapper, "__dependencies__", [])
+                use_once = getattr(func_wrapper, "__use_once__", False)
 
                 # Print method name and signature
                 print(f"- {name}{signature}")
@@ -207,6 +216,12 @@ class Cleaner:
                     print(f"\t{first_line}")
                 else:
                     print("\tNo docstring available.")
+
+                # Print function dependencies and use_once details
+                if dependencies:
+                    print(f"\tDependencies: {', '.join(dependencies)}")
+                if use_once:
+                    print(f"\tNote: Can only be run once")
 
     def _print_instruments(self) -> None:
         print(
@@ -284,18 +299,31 @@ class Cleaner:
 
         for instrument in self._instruments:
             try:
-                temp_df = instrument.correct_time_from_config(
-                    instrument.df, trim_start, trim_end
-                )
-                if len(instrument.df) == 0:
-                    print(
-                        f"Warning {instrument.name}: No data in time range! "
-                        "No changes have been made."
+                if self.time_trim_from is None or self.time_trim_to is None:
+                    temp_df = instrument.correct_time_from_config(
+                        instrument.df, trim_start, trim_end
                     )
-                    continue
+                    if len(instrument.df) == 0:
+                        print(
+                            f"Warning {instrument.name}: No data in time range! "
+                            "No changes have been made."
+                        )
+                        continue
 
-                instrument.df = temp_df
-                success.append(instrument.name)
+                    instrument.df = temp_df
+                    success.append(instrument.name)
+
+                elif (
+                    self.time_trim_from is not None
+                    and self.time_trim_to is not None
+                ):
+                    # Cut each instrument's data to the selected time range
+                    instrument.df = instrument.df[
+                        (instrument.df.index >= self.time_trim_from)
+                        & (instrument.df.index <= self.time_trim_to)
+                    ]
+                    print("Time trimmed for", instrument.name)
+                    success.append(instrument.name)
             except Exception as e:
                 errors.append((instrument.name, e))
 
@@ -581,7 +609,6 @@ class Cleaner:
             "set_pressure_column",
             "set_time_as_index",
             "data_corrections",
-            "set_pressure_column",
         ],
         use_once=False,
     )
@@ -813,11 +840,9 @@ class Cleaner:
 
     @function_dependencies(
         [
-            "merge_instruments",
-            "set_pressure_column",
             "set_time_as_index",
-            "correct_time",
-            "remove_duplicates",
+            "data_corrections",
+            "set_pressure_column",
         ],
         use_once=False,
     )
