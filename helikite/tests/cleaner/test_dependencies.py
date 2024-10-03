@@ -3,12 +3,12 @@ from helikite.tests.cleaner.mock import MockInstrument
 import datetime
 
 
-def test_function_dependencies():
+def test_function_dependencies(campaign_data):
     instrument1 = MockInstrument("inst1")
     cleaner = Cleaner(
         instruments=[instrument1],
         reference_instrument=instrument1,
-        input_folder="dummy_folder",
+        input_folder=str(campaign_data),
         flight_date=datetime.date(2023, 1, 1),
     )
 

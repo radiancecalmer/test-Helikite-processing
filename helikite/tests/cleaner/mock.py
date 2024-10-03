@@ -5,14 +5,16 @@ from helikite.instruments.base import Instrument
 # Mock Instrument class for testing purposes
 class MockInstrument(Instrument):
     def __init__(self, name, data=None, **kwargs):
-        # Initialize the base Instrument class with given parameters
         super().__init__(**kwargs)
         self.name = name
-        # Initialize the DataFrame from provided data or set to an empty DataFrame
         self.df_raw = pd.DataFrame(
             data if data else {"time": [], "pressure": []}
         )
         self.df = self.df_raw.copy()
+
+    def read_from_folder(self, folder, quiet=False):
+        # Return df_raw directly for testing purposes
+        return self.df_raw
 
     def file_identifier(self, first_lines_of_csv):
         # Assume mock instrument always identifies its file for simplicity
