@@ -27,32 +27,34 @@ def stp_convert_dry(x, t, p1):
     return x_stp
 
 
-def stp_convert_moist(x, t, p1, rh):
-    """
-    Pressure in hPa
-    Temperature in °C
-    """
+# def stp_convert_moist(x, t, p1, rh):
+#     """
+#     Pressure in hPa
+#     Temperature in °C
 
-    p = p1 * 100
-    t = t + 273.15
+#     TODO: Check function
+#     """
 
-    if t > 273.15:
-        e_s = (
-            np.exp(34.494 - (4924.9 / ((t - 273.15) + 237.1)))
-            / ((t - 273.15) + 105) ** 1.57
-        )
-    else:
-        e_s = (
-            np.exp(43.494 - (6545.8 / ((t - 273.15) + 278)))
-            / ((t - 273.15) + 868) ** 2
-        )
+#     p = p1 * 100
+#     t = t + 273.15
 
-    e = (rh * e_s) / 100
-    t_v = t / (1 - (e / p) * (1 - 0.622))
-    v_stp = (273.15 / t_v) * (p / 1013.15)
-    x_stp = x / v_stp
+#     if t > 273.15:
+#         e_s = (
+#             np.exp(34.494 - (4924.9 / ((t - 273.15) + 237.1)))
+#             / ((t - 273.15) + 105) ** 1.57
+#         )
+#     else:
+#         e_s = (
+#             np.exp(43.494 - (6545.8 / ((t - 273.15) + 278)))
+#             / ((t - 273.15) + 868) ** 2
+#         )
 
-    return x_stp
+#     e = (rh * e_s) / 100
+#     t_v = t / (1 - (e / p) * (1 - 0.622))
+#     v_stp = (273.15 / t_v) * (p / 1013.15)
+#     x_stp = x / v_stp
+
+#     return x_stp
 
 
 def stp_moist_test(x, t, p1, rh):
