@@ -31,7 +31,11 @@ def reduce_column_to_single_unique_value(df: pd.DataFrame, col: str) -> Any:
     """
 
     # Get number of bins
-    values = df.groupby(col).all().index.to_list()
+    values = (
+        df.groupby(col, group_keys=False)
+        .apply(lambda x: (x != pd.Timestamp(0)).all(), include_groups=False)
+        .index.to_list()
+    )
     if len(values) == 1:
         return values[0]
     else:

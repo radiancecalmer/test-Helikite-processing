@@ -22,19 +22,18 @@ from helikite.constants import constants
 logger = logging.getLogger(__name__)
 logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
-CSV_HEADER = (
-    "SBI,DateTime,PartCon,CO2,P_baro,TEMPbox,mFlow,TEMPsamp,RHsamp,"
-    "TEMP1,RH1,TEMP2,RH2,vBat\n"
-)
-
 
 class FlightComputer(Instrument):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.name = "flight_computer"
+        self._csv_header = (
+            "SBI,DateTime,PartCon,CO2,P_baro,TEMPbox,mFlow,TEMPsamp,RHsamp,"
+            "TEMP1,RH1,TEMP2,RH2,vBat\n"
+        )
 
     def file_identifier(self, first_lines_of_csv) -> bool:
-        if first_lines_of_csv[0] == CSV_HEADER:
+        if first_lines_of_csv[0] == self._csv_header:
             return True
 
         return False
@@ -134,7 +133,7 @@ class FlightComputer(Instrument):
 
         with open(self.filename, "r") as csv_data:
             for row in csv_data:
-                if row == CSV_HEADER:
+                if row == self._csv_header:
                     if header_counter == 0:
                         # Only append the first header, ignore all others
                         cleaned_csv.write(row)
