@@ -1,21 +1,9 @@
-"""
-
-1) Flight computer -> LOG_20220929.txt (has pressure)
-
-Data from the onboard microcontroller. Resolution: 1 sec
-DateTime in seconds since 1970-01-01 (to be verified)
-
-Variables to keep: DateTime, P_baro, CO2, TEMP1, TEMP2, TEMPsamp, RH1, RH2,
-                   RHsamp, mFlow
-Houskeeping variables: TEMPbox, vBat
-"""
-
 from helikite.instruments.base import Instrument
-import pandas as pd
 from helikite.processing.conversions import pressure_to_altitude
 from io import StringIO
-import logging
 from helikite.constants import constants
+import logging
+import pandas as pd
 
 
 # Define logger for this file
@@ -23,7 +11,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(constants.LOGLEVEL_CONSOLE)
 
 
-class FlightComputer(Instrument):
+class FlightComputerV1(Instrument):
+    """
+    This flight computer relates to the first version used in campaigns
+    in 2023, 2024. A new version was designed in 2024. See FlightComputerV2.
+    """
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.name = "flight_computer"
@@ -159,7 +152,67 @@ class FlightComputer(Instrument):
         return df
 
 
-flight_computer = FlightComputer(
+class FlightComputerV2(Instrument):
+    """
+    This flight computer relates to the second version used in campaigns
+    in 2024. This version uses a new set of metadata and a modified CSV format.
+    """
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.name = "flight_computer"
+        self._csv_header = (
+            "F_cur_pos,F_cntdown,F_smp_flw,F_smp_tmp,F_smp_prs,F_pump_pw,F_psvolts,F_err_rpt,"
+            "SO_S,SO_D,SO_U,SO_V,SO_W,SO_T,SO_H,SO_P,SO_PI,SO_RO,SO_MD,POPID,POPCHAIN,POPtot,"
+            "POPf,POPT,POPc1,POPc2,POPc3,POPc4,POPc5,POPc6,POPc7,POPc8,Ubat,CO2,BME_T,BME_H,"
+            "BME_P,CPUTEMP,RPiT,RPiS,UTCTime,Status,Lat,LatDir,Long,LongDir,Speed,Course,Date,"
+            "MagVar,MVdir,Inlet_T,Inlet_H,Out1_T,Out1_H,Out2_T,Out2_H,GPSQ,Sats,Hprec,Alt,AltU,"
+            "Geoidal,UTCTime2,Heading,HeadTrue,Roll,Pitch,Heave,RollAcc,PitchAcc,HeadAcc,GNSSqty,"
+            "STinvmm_r,STinvmm_g,STinvmm_b,STred_smp,STred_ref,STgrn_smp,STgrn_ref,STblu_smp\n"
+        )
+
+    def file_identifier(self, first_lines_of_csv) -> bool:
+        # Identify file by checking if the header matches the expected format
+        return first_lines_of_csv[0].startswith(self._csv_header)
+
+    def read_data(self) -> pd.DataFrame:
+        """Read data into dataframe, adjusting for duplicate headers."""
+
+        cleaned_csv = StringIO()
+        header_counter = 0
+
+        with open(self.filename, "r") as csv_data:
+            for row in csv_data:
+                if row.startswith(self._csv_header):
+                    if header_counter == 0:
+                        # Append the first header only
+                        cleaned_csv.write(row)
+                    header_counter += 1
+                else:
+                    cleaned_csv.write(row)
+
+        # Return to the start of StringIO for reading
+        cleaned_csv.seek(0)
+
+        df = pd.read_csv(
+            cleaned_csv,
+            dtype=self.dtype,
+            na_values=self.na_values,
+            header=self.header,
+            delimiter=self.delimiter,
+            lineterminator=self.lineterminator,
+            comment=self.comment,
+            names=self.names,
+            index_col=self.index_col,
+        )
+
+        return df
+
+    def data_corrections(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        pass
+
+
+flight_computer_v1 = FlightComputerV1(
     dtype={
         "SBI": "str",
         "DateTime": "Int64",

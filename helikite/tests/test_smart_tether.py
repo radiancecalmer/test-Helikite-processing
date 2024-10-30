@@ -1,10 +1,5 @@
 import pandas as pd
-import os
-import sys
-
-# Append the root directory of your project to the system path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from instruments.smart_tether import SmartTether, smart_tether  # noqa
+from helikite.instruments.smart_tether import smart_tether
 
 
 def test_set_time_as_index(st_data_fake_midnight):

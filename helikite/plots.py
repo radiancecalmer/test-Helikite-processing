@@ -879,16 +879,16 @@ def campaign_2023(
     for variables, instrument in [
         (
             [
-                f"{instruments.flight_computer.name}_vBat",
-                f"{instruments.flight_computer.name}_TEMPbox",
+                f"{instruments.flight_computer_v1.name}_vBat",
+                f"{instruments.flight_computer_v1.name}_TEMPbox",
             ],
             "Flight Computer",
         ),
         (
             (
                 [
-                    f"{instruments.flight_computer.name}_TEMP1",
-                    f"{instruments.flight_computer.name}_TEMP2",
+                    f"{instruments.flight_computer_v1.name}_TEMP1",
+                    f"{instruments.flight_computer_v1.name}_TEMP2",
                     f"{instruments.smart_tether.name}_T (deg C)",
                 ],
                 "Smart Tether",
@@ -896,8 +896,8 @@ def campaign_2023(
             if instruments.smart_tether in all_instruments
             else (
                 [
-                    f"{instruments.flight_computer.name}_TEMP1",
-                    f"{instruments.flight_computer.name}_TEMP2",
+                    f"{instruments.flight_computer_v1.name}_TEMP1",
+                    f"{instruments.flight_computer_v1.name}_TEMP2",
                 ],
                 "Flight Computer",
             )
