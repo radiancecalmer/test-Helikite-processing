@@ -203,9 +203,9 @@ class FlightComputerV2(Instrument):
                     fixed_header = f"DateTime,{full_header}"
                     cleaned_csv.write(fixed_header)
                 else:
-                    # Replace space with a comma and remove data longer header
-                    fixed_row = row.replace(" ", ",")
-
+                    # Replace space with a comma only in the first 20 characters of the line
+                    fixed_row = row[:20].replace(" ", ",") + row[20:]
+                    # print(row_index, fixed_row)
                     # If the column ends with a comma, it's a split row, so
                     # append the next row to it
                     if fixed_row[-2] in [",", "-"]:
@@ -219,7 +219,7 @@ class FlightComputerV2(Instrument):
                         # Add the saved row to the start of the current row
                         fixed_row = saved_row[:-1] + fixed_row
                         saved_row = None
-                        print("Split row appended")
+                        # print("Split row appended")
                         # print(row_index, "Fixed row", fixed_row)
                     # Get all individual columns by splitting on commas then
                     # remove any extra columns
@@ -231,18 +231,26 @@ class FlightComputerV2(Instrument):
                     if number_of_columns > len(self.cols_housekeeping):
                         fixed_row = fixed_row[: len(self.cols_housekeeping)]
 
+                    if number_of_columns < len(self.cols_housekeeping):
+                        # If the number of columns is less than expected, append
+                        # empty columns
+                        fixed_row += ["" for _ in range(len(self.cols_housekeeping) - number_of_columns)]
 
                     # Join the columns back into a string
                     fixed_row = ",".join(fixed_row)
+                    # Put new line if it doesn't exist
+                    # print(type(fixed_row), row_index, fixed_row)
 
-                    print(fixed_row)
                     # print(fixed_row)
+                    # print(row_index, len(fixed_row), len(fixed_row.split(",")))
                     cleaned_csv.write(fixed_row)
+                cleaned_csv.write("\n")
 
 
 
         # Return to the start of StringIO for reading
         cleaned_csv.seek(0)
+        # print(cleaned_csv.getvalue())
         df = pd.read_csv(
             cleaned_csv,
             dtype=self.dtype,
@@ -320,26 +328,26 @@ flight_computer_v1 = FlightComputerV1(
 flight_computer_v2 = FlightComputerV2(
     dtype={
         "DateTime": "str",  # Matches rewritten header as above in read_data()
-        "F_cur_pos": "Int64",
-        "F_cntdown": "Int64",
+        "F_cur_pos": "Float64",
+        "F_cntdown": "Float64",
         "F_smp_flw": "Float64",
         "F_smp_tmp": "Float64",
         "F_smp_prs": "Float64",
-        "F_pump_pw": "Int64",
+        "F_pump_pw": "Float64",
         "F_psvolts": "Float64",
-        "F_err_rpt": "Int64",
-        "SO_S": "Int64",
-        "SO_D": "Int64",
-        "SO_U": "Int64",
-        "SO_V": "Int64",
-        "SO_W": "Int64",
-        "SO_T": "Int64",
-        "SO_H": "Int64",
-        "SO_P": "Int64",
-        "SO_PI": "Int64",
-        "SO_RO": "Int64",
-        "SO_MD": "Int64",
-        "POPID": "Int64",
+        "F_err_rpt": "Float64",
+        "SO_S": "Float64",
+        "SO_D": "Float64",
+        "SO_U": "Float64",
+        "SO_V": "Float64",
+        "SO_W": "Float64",
+        "SO_T": "Float64",
+        "SO_H": "Float64",
+        "SO_P": "Float64",
+        "SO_PI": "Float64",
+        "SO_RO": "Float64",
+        "SO_MD": "Float64",
+        "POPID": "Float64",
         "POPCHAIN": "Int64",
         "POPtot": "Int64",
         "POPf": "Int64",
@@ -358,18 +366,18 @@ flight_computer_v2 = FlightComputerV2(
         "BME_H": "Float64",
         "BME_P": "Float64",
         "CPUTEMP": "Float64",
-        "RPiT": "Float64",
-        "RPiS": "Float64",
+        "RPiT": "str",
+        "RPiS": "str",
         "UTCTime": "str",
         "Status": "str",
         "Lat": "str",
         "LatDir": "str",
         "Long": "str",
         "LongDir": "str",
-        "Speed": "Float64",
+        "Speed": "str",
         "Course": "Float64",
         "Date": "str",
-        "MagVar": "Float64",
+        "MagVar": "str",
         "MVdir": "str",
         "Inlet_T": "Float64",
         "Inlet_H": "Float64",
@@ -378,21 +386,21 @@ flight_computer_v2 = FlightComputerV2(
         "Out2_T": "Float64",
         "Out2_H": "Float64",
         "GPSQ": "str",
-        "Sats": "Int64",
+        "Sats": "Float64",
         "Hprec": "Float64",
-        "Alt": "Float64",
+        "Alt": "str",
         "AltU": "str",
         "Geoidal": "Float64",
         "UTCTime2": "str",
-        "Heading": "Float64",
-        "HeadTrue": "Float64",
+        "Heading": "str",
+        "HeadTrue": "str",
         "Roll": "Float64",
         "Pitch": "Float64",
         "Heave": "Float64",
         "RollAcc": "Float64",
         "PitchAcc": "Float64",
         "HeadAcc": "Float64",
-        "GNSSqty": "Int64",
+        "GNSSqty": "Float64",
         "STinvmm_r": "Float64",
         "STinvmm_g": "Float64",
         "STinvmm_b": "Float64",
