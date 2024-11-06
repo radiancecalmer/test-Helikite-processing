@@ -161,39 +161,87 @@ class FlightComputerV2(Instrument):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.name = "flight_computer"
-        self._csv_header = (
-            "F_cur_pos,F_cntdown,F_smp_flw,F_smp_tmp,F_smp_prs,F_pump_pw,F_psvolts,F_err_rpt,"
-            "SO_S,SO_D,SO_U,SO_V,SO_W,SO_T,SO_H,SO_P,SO_PI,SO_RO,SO_MD,POPID,POPCHAIN,POPtot,"
-            "POPf,POPT,POPc1,POPc2,POPc3,POPc4,POPc5,POPc6,POPc7,POPc8,Ubat,CO2,BME_T,BME_H,"
-            "BME_P,CPUTEMP,RPiT,RPiS,UTCTime,Status,Lat,LatDir,Long,LongDir,Speed,Course,Date,"
-            "MagVar,MVdir,Inlet_T,Inlet_H,Out1_T,Out1_H,Out2_T,Out2_H,GPSQ,Sats,Hprec,Alt,AltU,"
-            "Geoidal,UTCTime2,Heading,HeadTrue,Roll,Pitch,Heave,RollAcc,PitchAcc,HeadAcc,GNSSqty,"
-            "STinvmm_r,STinvmm_g,STinvmm_b,STred_smp,STred_ref,STgrn_smp,STgrn_ref,STblu_smp\n"
+
+        # Datetime is prefixed with space, so we need to account for that
+        self._csv_header_partial = (
+            "F_cur_pos,F_cntdown,F_smp_flw,F_smp_tmp,F_smp_prs,F_pump_pw,"
+            "F_psvolts,F_err_rpt,SO_S,SO_D,SO_U,SO_V,SO_W,SO_T,SO_H,SO_P,"
+            "SO_PI,SO_RO,SO_MD,POPID,POPCHAIN,POPtot,POPf,POPT,POPc1,POPc2,"
+            "POPc3,POPc4,POPc5,POPc6,POPc7,POPc8,Ubat,CO2,BME_T,BME_H,BME_P,"
+            "CPUTEMP,RPiT,RPiS,UTCTime,Status,Lat,LatDir,Long,LongDir,Speed,"
+            "Course,Date,MagVar,MVdir,Inlet_T,Inlet_H,Out1_T,Out1_H,Out2_T,"
+            "Out2_H,GPSQ,Sats,Hprec,Alt,AltU,Geoidal,UTCTime2,Heading,"
+            "HeadTrue,Roll,Pitch,Heave,RollAcc,PitchAcc,HeadAcc,GNSSqty,"
+            "STblk_smp,STblk_ref,STsmp_flw,STsmp_tmp,STsmp_prs,STpump_pw,"
+            "STpsvolts,STerr_rpt"
         )
 
     def file_identifier(self, first_lines_of_csv) -> bool:
-        # Identify file by checking if the header matches the expected format
-        return first_lines_of_csv[0].startswith(self._csv_header)
+        # In V2, datetime is prefixed with a space, check partial is within first line
+
+        return self._csv_header_partial in first_lines_of_csv[0]
 
     def read_data(self) -> pd.DataFrame:
         """Read data into dataframe, adjusting for duplicate headers."""
 
         cleaned_csv = StringIO()
-        header_counter = 0
 
+        # The file needs parsing first:
+        # 1. The header row starts with a datetime and space, rename it to
+        #    datetime, remove the space and write to a new StringIO object
+        # 2. The same applies to each row, replace space with comma, keep the
+        #    data
+        # 3. Some lines have been split over two lines, find any rows ending in a comma
+        #    and append the next line to it
         with open(self.filename, "r") as csv_data:
-            for row in csv_data:
-                if row.startswith(self._csv_header):
-                    if header_counter == 0:
-                        # Append the first header only
-                        cleaned_csv.write(row)
-                    header_counter += 1
+            saved_row = None  # Store the last row if it's split
+            for row_index, row in enumerate(csv_data):
+                if row_index == 0:
+                    # Split the space out of the whole header (removing the
+                    # recorded timestamp), then add "datetime" and a comma
+                    full_header = row.split(" ")[1]
+                    fixed_header = f"DateTime,{full_header}"
+                    cleaned_csv.write(fixed_header)
                 else:
-                    cleaned_csv.write(row)
+                    # Replace space with a comma and remove data longer header
+                    fixed_row = row.replace(" ", ",")
+
+                    # If the column ends with a comma, it's a split row, so
+                    # append the next row to it
+                    print(row_index, "LAST 2nd char", fixed_row[-2], "Last char", fixed_row[-1])
+                    print(row_index, "First char", fixed_row[0], fixed_row[1],)
+                    if fixed_row[-2] in [",", "-"]:
+                        print("Split row detected, saving for next pass")
+                        saved_row = fixed_row
+                        continue
+
+                    if fixed_row[0] == ",":  # Remove leading comma
+                        # Add the saved row to the start of the current row
+                        fixed_row = saved_row[:-1] + fixed_row
+                        saved_row = None
+                        print("Split row appended")
+                    print(row_index, "Fixed row", fixed_row)
+                    # Get all individual columns by splitting on commas then
+                    # remove any extra columns
+                    number_of_columns = len(fixed_row.split(","))
+                    fixed_row = fixed_row.split(",")
+
+                    # If the number of columns is greater than expected, remove
+                    # the extra columns
+                    if number_of_columns > len(self.cols_housekeeping):
+                        fixed_row = fixed_row[: len(self.cols_housekeeping)]
+
+
+
+
+                    fixed_row = ",".join(fixed_row)
+                    # print(fixed_row)
+                    cleaned_csv.write(fixed_row)
+
+
 
         # Return to the start of StringIO for reading
         cleaned_csv.seek(0)
-
         df = pd.read_csv(
             cleaned_csv,
             dtype=self.dtype,
@@ -209,6 +257,9 @@ class FlightComputerV2(Instrument):
         return df
 
     def data_corrections(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        pass
+
+    def set_time_as_index(self, df: pd.DataFrame) -> pd.DataFrame:
         pass
 
 
@@ -263,4 +314,227 @@ flight_computer_v1 = FlightComputerV1(
     ],
     export_order=100,
     pressure_variable="P_baro",
+)
+
+flight_computer_v2 = FlightComputerV2(
+    dtype={
+        "DateTime": "str",  # Matches rewritten header as above in read_data()
+        "F_cur_pos": "Int64",
+        "F_cntdown": "Int64",
+        "F_smp_flw": "Float64",
+        "F_smp_tmp": "Float64",
+        "F_smp_prs": "Float64",
+        "F_pump_pw": "Int64",
+        "F_psvolts": "Float64",
+        "F_err_rpt": "Int64",
+        "SO_S": "Int64",
+        "SO_D": "Int64",
+        "SO_U": "Int64",
+        "SO_V": "Int64",
+        "SO_W": "Int64",
+        "SO_T": "Int64",
+        "SO_H": "Int64",
+        "SO_P": "Int64",
+        "SO_PI": "Int64",
+        "SO_RO": "Int64",
+        "SO_MD": "Int64",
+        "POPID": "Int64",
+        "POPCHAIN": "Int64",
+        "POPtot": "Int64",
+        "POPf": "Int64",
+        "POPT": "Int64",
+        "POPc1": "Int64",
+        "POPc2": "Int64",
+        "POPc3": "Int64",
+        "POPc4": "Int64",
+        "POPc5": "Int64",
+        "POPc6": "Int64",
+        "POPc7": "Int64",
+        "POPc8": "Int64",
+        "Ubat": "Float64",
+        "CO2": "Float64",
+        "BME_T": "Float64",
+        "BME_H": "Float64",
+        "BME_P": "Float64",
+        "CPUTEMP": "Float64",
+        "RPiT": "Float64",
+        "RPiS": "Float64",
+        "UTCTime": "str",
+        "Status": "str",
+        "Lat": "str",
+        "LatDir": "str",
+        "Long": "str",
+        "LongDir": "str",
+        "Speed": "Float64",
+        "Course": "Float64",
+        "Date": "str",
+        "MagVar": "Float64",
+        "MVdir": "str",
+        "Inlet_T": "Float64",
+        "Inlet_H": "Float64",
+        "Out1_T": "Float64",
+        "Out1_H": "Float64",
+        "Out2_T": "Float64",
+        "Out2_H": "Float64",
+        "GPSQ": "str",
+        "Sats": "Int64",
+        "Hprec": "Float64",
+        "Alt": "Float64",
+        "AltU": "str",
+        "Geoidal": "Float64",
+        "UTCTime2": "str",
+        "Heading": "Float64",
+        "HeadTrue": "Float64",
+        "Roll": "Float64",
+        "Pitch": "Float64",
+        "Heave": "Float64",
+        "RollAcc": "Float64",
+        "PitchAcc": "Float64",
+        "HeadAcc": "Float64",
+        "GNSSqty": "Int64",
+        "STinvmm_r": "Float64",
+        "STinvmm_g": "Float64",
+        "STinvmm_b": "Float64",
+        "STred_smp": "Float64",
+        "STred_ref": "Float64",
+        "STgrn_smp": "Float64",
+        "STgrn_ref": "Float64",
+        "STblu_smp": "Float64",
+        "STblk_smp": "Float64",
+        "STblk_ref": "Float64",
+        "STsmp_flw": "Float64",
+        "STsmp_tmp": "Float64",
+        "STsmp_prs": "Float64",
+        "STpump_pw": "Float64",
+        "STpsvolts": "Float64",
+        "STerr_rpt": "Float64",
+    },
+    na_values=["NA", "-9999.00"],
+    comment="#",
+    cols_export=[
+        "Altitude",
+        "Altitude_agl",
+        "P_baro",
+        "CO2",
+        "BME_T",
+        "BME_H",
+        "BME_P",
+        "CPUTEMP",
+        "RPiT",
+        "RPiS",
+        "Ubat",
+        "Speed",
+        "Course",
+        "MagVar",
+        "Inlet_T",
+        "Inlet_H",
+        "Out1_T",
+        "Out1_H",
+        "Out2_T",
+        "Out2_H",
+        "Heading",
+        "HeadTrue",
+        "Roll",
+        "Pitch",
+        "Heave",
+        "RollAcc",
+        "PitchAcc",
+        "HeadAcc",
+        "GNSSqty",
+        "STinvmm_r",
+        "STinvmm_g",
+        "STinvmm_b",
+        "STred_smp",
+        "STred_ref",
+        "STgrn_smp",
+        "STgrn_ref",
+        "STblu_smp",
+    ],
+    cols_housekeeping=[
+        "Altitude",
+        "Altitude_agl",
+        "F_cur_pos",
+        "F_cntdown",
+        "F_smp_flw",
+        "F_smp_tmp",
+        "F_smp_prs",
+        "F_pump_pw",
+        "F_psvolts",
+        "F_err_rpt",
+        "SO_S",
+        "SO_D",
+        "SO_U",
+        "SO_V",
+        "SO_W",
+        "SO_T",
+        "SO_H",
+        "SO_P",
+        "SO_PI",
+        "SO_RO",
+        "SO_MD",
+        "POPID",
+        "POPCHAIN",
+        "POPtot",
+        "POPf",
+        "POPT",
+        "POPc1",
+        "POPc2",
+        "POPc3",
+        "POPc4",
+        "POPc5",
+        "POPc6",
+        "POPc7",
+        "POPc8",
+        "Ubat",
+        "CO2",
+        "BME_T",
+        "BME_H",
+        "BME_P",
+        "CPUTEMP",
+        "RPiT",
+        "RPiS",
+        "UTCTime",
+        "Status",
+        "Lat",
+        "LatDir",
+        "Long",
+        "LongDir",
+        "Speed",
+        "Course",
+        "Date",
+        "MagVar",
+        "MVdir",
+        "Inlet_T",
+        "Inlet_H",
+        "Out1_T",
+        "Out1_H",
+        "Out2_T",
+        "Out2_H",
+        "GPSQ",
+        "Sats",
+        "Hprec",
+        "Alt",
+        "AltU",
+        "Geoidal",
+        "UTCTime2",
+        "Heading",
+        "HeadTrue",
+        "Roll",
+        "Pitch",
+        "Heave",
+        "RollAcc",
+        "PitchAcc",
+        "HeadAcc",
+        "GNSSqty",
+        "STinvmm_r",
+        "STinvmm_g",
+        "STinvmm_b",
+        "STred_smp",
+        "STred_ref",
+        "STgrn_smp",
+        "STgrn_ref",
+        "STblu_smp",
+    ],
+    export_order=100,
+    pressure_variable="F_smp_prs",
 )

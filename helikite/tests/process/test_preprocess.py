@@ -6,6 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from helikite.instruments import (  # noqa
     smart_tether,
     flight_computer_v1,
+    flight_computer_v2,
     msems_inverted,
     msems_readings,
     msems_scan,
@@ -14,12 +15,12 @@ from helikite.instruments import (  # noqa
 )
 
 
-def test_detect_file(campaign_data_location: str):
+def test_detect_file(campaign_data_location_2022: str, campaign_data_location_2024: str):
     """Test that the correct file type is detected"""
 
-    for filename in os.listdir(campaign_data_location):
+    for filename in os.listdir(campaign_data_location_2022):
         if not os.path.isdir(filename):
-            full_path = os.path.join(campaign_data_location, filename)
+            full_path = os.path.join(campaign_data_location_2022, filename)
 
             with open(full_path) as in_file:
                 # Read the first set of lines for headers
@@ -40,12 +41,23 @@ def test_detect_file(campaign_data_location: str):
             if filename == "STAP_220929A0_processed.txt":
                 assert stap.file_identifier(header_lines) is True
 
-
-def test_detect_file_collisions(campaign_data_location: str):
-    """Test that only one instrument is identified"""
-    for filename in os.listdir(campaign_data_location):
+    for filename in os.listdir(campaign_data_location_2024):
         if not os.path.isdir(filename):
-            full_path = os.path.join(campaign_data_location, filename)
+            full_path = os.path.join(campaign_data_location_2024, filename)
+
+            with open(full_path) as in_file:
+                # Read the first set of lines for headers
+                header_lines = [next(in_file) for x in range(50)]
+
+            if filename == "HFC_240926_3.csv":
+                assert flight_computer_v2.file_identifier(header_lines) is True
+
+
+def test_detect_file_collisions(campaign_data_location_2022: str):
+    """Test that only one instrument is identified"""
+    for filename in os.listdir(campaign_data_location_2022):
+        if not os.path.isdir(filename):
+            full_path = os.path.join(campaign_data_location_2022, filename)
 
             with open(full_path) as in_file:
                 # Read the first set of lines for headers
