@@ -208,10 +208,10 @@ class FlightComputerV2(Instrument):
 
                     # If the column ends with a comma, it's a split row, so
                     # append the next row to it
-                    print(row_index, "LAST 2nd char", fixed_row[-2], "Last char", fixed_row[-1])
-                    print(row_index, "First char", fixed_row[0], fixed_row[1],)
                     if fixed_row[-2] in [",", "-"]:
-                        print("Split row detected, saving for next pass")
+                        # print("Split row detected, saving for next pass")
+                        # print(row_index, "LAST 2nd char", fixed_row[-2], "Last char", fixed_row[-1])
+                        # print(row_index, "First char", fixed_row[0], fixed_row[1],)
                         saved_row = fixed_row
                         continue
 
@@ -220,7 +220,7 @@ class FlightComputerV2(Instrument):
                         fixed_row = saved_row[:-1] + fixed_row
                         saved_row = None
                         print("Split row appended")
-                    print(row_index, "Fixed row", fixed_row)
+                        # print(row_index, "Fixed row", fixed_row)
                     # Get all individual columns by splitting on commas then
                     # remove any extra columns
                     number_of_columns = len(fixed_row.split(","))
@@ -232,9 +232,10 @@ class FlightComputerV2(Instrument):
                         fixed_row = fixed_row[: len(self.cols_housekeeping)]
 
 
-
-
+                    # Join the columns back into a string
                     fixed_row = ",".join(fixed_row)
+
+                    print(fixed_row)
                     # print(fixed_row)
                     cleaned_csv.write(fixed_row)
 
