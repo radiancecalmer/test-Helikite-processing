@@ -266,7 +266,7 @@ class FlightComputerV2(Instrument):
         return df
 
     def data_corrections(self, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
-        pass
+        return df
 
     def set_time_as_index(self, df: pd.DataFrame) -> pd.DataFrame:
         """Set the DateTime as index of the dataframe and correct if needed
