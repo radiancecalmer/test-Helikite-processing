@@ -234,7 +234,12 @@ class FlightComputerV2(Instrument):
                     if number_of_columns < len(self.cols_housekeeping):
                         # If the number of columns is less than expected, append
                         # empty columns
-                        fixed_row += ["" for _ in range(len(self.cols_housekeeping) - number_of_columns)]
+                        fixed_row += [
+                            ""
+                            for _ in range(
+                                len(self.cols_housekeeping) - number_of_columns
+                            )
+                        ]
 
                     # Join the columns back into a string
                     fixed_row = ",".join(fixed_row)
@@ -245,8 +250,6 @@ class FlightComputerV2(Instrument):
                     # print(row_index, len(fixed_row), len(fixed_row.split(",")))
                     cleaned_csv.write(fixed_row)
                 cleaned_csv.write("\n")
-
-
 
         # Return to the start of StringIO for reading
         cleaned_csv.seek(0)
@@ -269,7 +272,21 @@ class FlightComputerV2(Instrument):
         pass
 
     def set_time_as_index(self, df: pd.DataFrame) -> pd.DataFrame:
-        pass
+        """Set the DateTime as index of the dataframe and correct if needed
+
+        The DateTime column is represented as YYMMMM-HHMMSS, so we need to
+        convert this to a datetime object.
+        Example: 240926-141516
+        """
+
+        # Flight computer uses seconds since 1970-01-01
+        df["DateTime"] = pd.to_datetime(df.index, format="%y%m%d-%H%M%S")
+
+        # Define the datetime column as the index
+        df.set_index("DateTime", inplace=True)
+
+        print(df)
+        return df
 
 
 flight_computer_v1 = FlightComputerV1(
@@ -418,7 +435,7 @@ flight_computer_v2 = FlightComputerV2(
         "STpsvolts": "Float64",
         "STerr_rpt": "Float64",
     },
-    na_values=["NA", "-9999.00"],
+    na_values=[],
     comment="#",
     cols_export=[
         "Altitude",
