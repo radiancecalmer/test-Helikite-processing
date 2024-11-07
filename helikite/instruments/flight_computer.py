@@ -177,7 +177,8 @@ class FlightComputerV2(Instrument):
         )
 
     def file_identifier(self, first_lines_of_csv) -> bool:
-        # In V2, datetime is prefixed with a space, check partial is within first line
+        # In V2, datetime is prefixed with a space, check partial is within
+        # first line
 
         return self._csv_header_partial in first_lines_of_csv[0]
 
@@ -191,8 +192,8 @@ class FlightComputerV2(Instrument):
         #    datetime, remove the space and write to a new StringIO object
         # 2. The same applies to each row, replace space with comma, keep the
         #    data
-        # 3. Some lines have been split over two lines, find any rows ending in a comma
-        #    and append the next line to it
+        # 3. Some lines have been split over two lines, find any rows ending
+        #    in a comma and append the next line to it
         with open(self.filename, "r") as csv_data:
             saved_row = None  # Store the last row if it's split
             for row_index, row in enumerate(csv_data):
@@ -203,24 +204,24 @@ class FlightComputerV2(Instrument):
                     fixed_header = f"DateTime,{full_header}"
                     cleaned_csv.write(fixed_header)
                 else:
-                    # Replace space with a comma only in the first 20 characters of the line
+                    # Replace space with comma in the first 20 chars of line
                     fixed_row = row[:20].replace(" ", ",") + row[20:]
-                    # print(row_index, fixed_row)
+
                     # If the column ends with a comma, it's a split row, so
                     # append the next row to it
                     if fixed_row[-2] in [",", "-"]:
-                        # print("Split row detected, saving for next pass")
-                        # print(row_index, "LAST 2nd char", fixed_row[-2], "Last char", fixed_row[-1])
-                        # print(row_index, "First char", fixed_row[0], fixed_row[1],)
                         saved_row = fixed_row
+                        # If there is a - with no value, remove the sign
+                        if fixed_row[-2] == "-":
+                            saved_row = saved_row[:-2] + saved_row[-1]
+
                         continue
 
                     if fixed_row[0] == ",":  # Remove leading comma
                         # Add the saved row to the start of the current row
                         fixed_row = saved_row[:-1] + fixed_row
                         saved_row = None
-                        # print("Split row appended")
-                        # print(row_index, "Fixed row", fixed_row)
+
                     # Get all individual columns by splitting on commas then
                     # remove any extra columns
                     number_of_columns = len(fixed_row.split(","))
@@ -232,7 +233,7 @@ class FlightComputerV2(Instrument):
                         fixed_row = fixed_row[: len(self.cols_housekeeping)]
 
                     if number_of_columns < len(self.cols_housekeeping):
-                        # If the number of columns is less than expected, append
+                        # If the number of columns is less than expected append
                         # empty columns
                         fixed_row += [
                             ""
@@ -243,12 +244,8 @@ class FlightComputerV2(Instrument):
 
                     # Join the columns back into a string
                     fixed_row = ",".join(fixed_row)
-                    # Put new line if it doesn't exist
-                    # print(type(fixed_row), row_index, fixed_row)
-
-                    # print(fixed_row)
-                    # print(row_index, len(fixed_row), len(fixed_row.split(",")))
                     cleaned_csv.write(fixed_row)
+
                 cleaned_csv.write("\n")
 
         # Return to the start of StringIO for reading
@@ -263,7 +260,7 @@ class FlightComputerV2(Instrument):
             lineterminator=self.lineterminator,
             comment=self.comment,
             names=self.names,
-            index_col=self.index_col,
+            index_col=False,
         )
 
         return df
@@ -280,12 +277,11 @@ class FlightComputerV2(Instrument):
         """
 
         # Flight computer uses seconds since 1970-01-01
-        df["DateTime"] = pd.to_datetime(df.index, format="%y%m%d-%H%M%S")
+        df["DateTime"] = pd.to_datetime(df.DateTime, format="%y%m%d-%H%M%S")
 
         # Define the datetime column as the index
         df.set_index("DateTime", inplace=True)
 
-        print(df)
         return df
 
 

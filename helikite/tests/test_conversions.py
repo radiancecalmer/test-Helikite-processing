@@ -1,6 +1,7 @@
 import pytest
 from helikite.processing.conversions import pressure_to_altitude
 
+
 def test_pressure_to_altitude():
     """Test the conversion of pressure to altitude"""
 
