@@ -25,6 +25,11 @@ class Constants(BaseSettings):
     LOGLEVEL_FILE: str = "DEBUG"
     QTY_LINES_TO_IDENTIFY_INSTRUMENT: int = 50
 
+    # Cross correlation
+    CROSSCORRELATION_DEFAULT_LAG: int = 10
+    ROLLING_WINDOW_DEFAULT_SIZE: int = 20
+    ROLLING_WINDOW_COLUMN_NAME: str = "pressure_rn"
+
     # Column names
     ALTITUDE_GROUND_LEVEL_COL: str = "flight_computer_Altitude_agl"
     ALTITUDE_SEA_LEVEL_COL: str = "flight_computer_Altitude"

@@ -3,6 +3,7 @@ from typing import Any
 import datetime
 from helikite.instruments.base import Instrument
 from helikite.constants import constants
+from helikite.processing.post import crosscorrelation
 import plotly.graph_objects as go
 import numpy as np
 import inspect
@@ -79,7 +80,6 @@ class Cleaner:
         self.pressure_column: str = constants.HOUSEKEEPING_VAR_PRESSURE
         self.master_df: pd.DataFrame | None = None
         self.housekeeping_df: pd.DataFrame | None = None
-        self.rolling_window_pressure_column_name: str = "pressure_rn"
         self.reference_instrument: Instrument = reference_instrument
 
         self._completed_operations: list[str] = []
@@ -166,12 +166,6 @@ class Cleaner:
         )
         state_info.append(
             f"{'Selected pressure points':<25}{selected_points_status:<30}"
-        )
-
-        # Add rolling window pressure column info
-        state_info.append(
-            f"{'Rolling window column':<25}"
-            f"{self.rolling_window_pressure_column_name:<30}"
         )
 
         # Add the functions that have been called and completed
@@ -552,57 +546,32 @@ class Cleaner:
         ],
         use_once=True,
     )
-    def apply_rolling_window_to_pressure(self, window_size: int = 20):
-        """Apply rolling window to the pressure measurements of each instrument
+    def _apply_rolling_window_to_pressure(
+        self,
+        instrument,
+        window_size: int = 20,
+        column_name: str = constants.ROLLING_WINDOW_COLUMN_NAME,
+    ):
+        """Apply rolling window to the pressure measurements of instrument
 
         Then plot the pressure measurements with the rolling window applied
         """
 
-        fig = go.Figure()
-        for instrument in self._instruments:
-            if self.pressure_column not in instrument.df.columns:
-                print(
-                    f"Note: {instrument.name} does not have a pressure column"
-                )
-                continue
-            instrument.df[self.rolling_window_pressure_column_name] = (
-                instrument.df[self.pressure_column]
-                .rolling(window=window_size)
-                .mean()
+        if self.pressure_column not in instrument.df.columns:
+            raise ValueError(
+                f"Note: {instrument.name} does not have a pressure column"
             )
 
-            fig.add_trace(
-                go.Scatter(
-                    x=instrument.df.index,
-                    y=instrument.df[self.rolling_window_pressure_column_name],
-                    name=f"{instrument.name}_rolling_window",
-                )
-            )
-
-            fig.add_trace(
-                go.Scatter(
-                    x=instrument.df.index,
-                    y=instrument.df[self.pressure_column],
-                    name=instrument.name,
-                )
-            )
-
-        fig.update_layout(
-            title="Pressure measurements",
-            xaxis_title="Time",
-            yaxis_title="Pressure (hPa)",
-            legend=dict(
-                title="Instruments",
-                yanchor="top",
-                y=1,
-                xanchor="left",
-                x=1.05,
-                orientation="v",
-            ),
-            margin=dict(l=40, r=150, t=50, b=40),
+        instrument.df[column_name] = (
+            instrument.df[self.pressure_column]
+            .rolling(window=window_size)
+            .mean()
         )
 
-        fig.show()
+        print(
+            f"Applied rolling window to pressure for {instrument.name}"
+            f" on column '{column_name}'"
+        )
 
     @function_dependencies(
         [
@@ -761,82 +730,120 @@ class Cleaner:
         # Show plot with interactive click functionality
         return VBox([fig, out])  # Use VBox to stack the plot and output
 
-    def _crosscorr(self, datax, datay, lag=0):
-        """Lag-N cross correlation."""
-        return datax.corr(datay.shift(lag))
+    # def _crosscorr(self, datax, datay, lag=0):
+    #     """Lag-N cross correlation."""
+    #     return datax.corr(datay.shift(lag))
 
-    def _find_time_lag(self, max_lag=180):
-        """Find time lag between instrument and reference pressure"""
-        if self.pressure_column not in self.reference_instrument.df.columns:
-            raise KeyError(
-                f"Pressure column '{self.pressure_column}' not found in "
-                "reference instrument '{self.reference_instrument.name}'"
-            )
+    # def _df_derived_by_shift(self, df_init, lag=0, NON_DER=[]):
+    #     self._df_shifted = df_init.copy()
 
-        ref_pressure = self.reference_instrument.df[
-            self.pressure_column
-        ].dropna()
-        ref_pressure = ref_pressure.sort_index()
+    #     if not lag:
+    #         return self._df_shifted
 
-        lag_results = {}
+    #     cols = {}
+    #     for i in range(1, 2 * lag + 1):
+    #         for x in list(self._df_shifted.columns):
+    #             if x not in NON_DER:
+    #                 if x not in cols:
+    #                     cols[x] = ["{}_{}".format(x, i)]
+    #                 else:
+    #                     cols[x].append("{}_{}".format(x, i))
 
-        for instrument in self._instruments:
-            if instrument == self.reference_instrument:
-                continue
+    #     for k, v in cols.items():
+    #         columns = v
+    #         self._df_shifted_n = pd.DataFrame(
+    #             data=None, columns=columns, index=self._df_shifted.index
+    #         )
+    #         i = -lag
+    #         for c in columns:
+    #             self._df_shifted_n[c] = self._df_shifted[k].shift(periods=i)
+    #             i += 1
+    #         df = pd.concat([self._df_shifted, self._df_shifted_n], axis=1)
 
-            # Check if the pressure column exists in this instrument
-            if self.pressure_column not in instrument.df.columns:
-                print(
-                    f"Skipping {instrument.name}: '{self.pressure_column}' "
-                    "column not found."
-                )
-                continue
+    #     return df
 
-            instrument_pressure = instrument.df[self.pressure_column].dropna()
-            instrument_pressure = instrument_pressure.sort_index()
+    # def df_findtimelag(self, df, range, instname=""):
+    #     filter_inst = [col for col in df if col.startswith(instname)]
+    #     df_inst = df[filter_inst].iloc[0]
+    #     # print(len(df_inst),len(range),df_inst.loc[df_inst.idxmax(axis=0)])
+    #     df_inst = df_inst.set_axis(range, copy=False)
+    #     max_inst = max(df_inst)
+    #     lag_inst = df_inst.loc[df_inst.idxmax(axis=0)]
+    #     # print(lag_inst)
+    #     return df_inst  # ,max_inst,lag_inst
 
-            # Align the indexes between the reference and current instrument
-            common_index = ref_pressure.index.intersection(
-                instrument_pressure.index
-            )
-            if len(common_index) == 0:
-                print(
-                    f"No common data between {self.reference_instrument.name} "
-                    "and {instrument.name}. Skipping..."
-                )
-                continue
+    # def _find_time_lag(self, max_lag=180):
+    #     """Find time lag between instrument and reference pressure"""
+    #     if self.pressure_column not in self.reference_instrument.df.columns:
+    #         raise KeyError(
+    #             f"Pressure column '{self.pressure_column}' not found in "
+    #             "reference instrument '{self.reference_instrument.name}'"
+    #         )
 
-            ref_pressure_aligned = ref_pressure.loc[common_index]
-            inst_pressure_aligned = instrument_pressure.loc[common_index]
+    #     ref_pressure = self.reference_instrument.df[
+    #         self.pressure_column
+    #     ].dropna()
+    #     ref_pressure = ref_pressure.sort_index()
 
-            if (
-                len(ref_pressure_aligned) == 0
-                or len(inst_pressure_aligned) == 0
-            ):
-                print(
-                    f"No valid overlapping data for {instrument.name}. "
-                    "Skipping..."
-                )
-                continue
+    #     lag_results = {}
 
-            # Compute cross-correlation for different lags
-            lags = range(-max_lag, max_lag + 1)
-            corrs = [
-                self._crosscorr(
-                    ref_pressure_aligned, inst_pressure_aligned, lag
-                )
-                for lag in lags
-            ]
-            best_lag = lags[
-                np.nanargmax(corrs)
-            ]  # Find the lag with max correlation, ignoring NaNs
+    #     for instrument in self._instruments:
+    #         if instrument == self.reference_instrument:
+    #             continue
 
-            print(f"Best lag for {instrument.name}: {best_lag} seconds")
+    #         # Check if the pressure column exists in this instrument
+    #         if self.pressure_column not in instrument.df.columns:
+    #             print(
+    #                 f"Skipping {instrument.name}: '{self.pressure_column}' "
+    #                 "column not found."
+    #             )
+    #             continue
 
-            # Store the lag
-            lag_results[instrument.name] = best_lag
+    #         instrument_pressure = instrument.df[self.pressure_column].dropna()
+    #         instrument_pressure = instrument_pressure.sort_index()
 
-        return lag_results
+    #         # Align the indexes between the reference and current instrument
+    #         common_index = ref_pressure.index.intersection(
+    #             instrument_pressure.index
+    #         )
+    #         if len(common_index) == 0:
+    #             print(
+    #                 f"No common data between {self.reference_instrument.name} "
+    #                 "and {instrument.name}. Skipping..."
+    #             )
+    #             continue
+
+    #         ref_pressure_aligned = ref_pressure.loc[common_index]
+    #         inst_pressure_aligned = instrument_pressure.loc[common_index]
+
+    #         if (
+    #             len(ref_pressure_aligned) == 0
+    #             or len(inst_pressure_aligned) == 0
+    #         ):
+    #             print(
+    #                 f"No valid overlapping data for {instrument.name}. "
+    #                 "Skipping..."
+    #             )
+    #             continue
+
+    #         # Compute cross-correlation for different lags
+    #         lags = range(-max_lag, max_lag + 1)
+    #         corrs = [
+    #             self._crosscorr(
+    #                 ref_pressure_aligned, inst_pressure_aligned, lag
+    #             )
+    #             for lag in lags
+    #         ]
+    #         best_lag = lags[
+    #             np.nanargmax(corrs)
+    #         ]  # Find the lag with max correlation, ignoring NaNs
+
+    #         print(f"Best lag for {instrument.name}: {best_lag} seconds")
+
+    #         # Store the lag
+    #         lag_results[instrument.name] = best_lag
+
+    #     return lag_results
 
     @function_dependencies(
         [
@@ -846,8 +853,21 @@ class Cleaner:
         ],
         use_once=False,
     )
-    def correct_time_and_pressure(self, max_lag=180):
+    def correct_time_and_pressure(
+        self,
+        max_lag=180,
+        apply_rolling_window_to: list[Instrument] = [],
+        rolling_window_size: int = constants.ROLLING_WINDOW_DEFAULT_SIZE,
+    ):
         """Correct time and pressure for each instrument based on time lag."""
+
+        # Apply rolling window to pressure
+        if apply_rolling_window_to:
+            for instrument in apply_rolling_window_to:
+                print(f"Applying rolling window for {instrument.name}")
+                self._apply_rolling_window_to_pressure(
+                    instrument, window_size=rolling_window_size
+                )
 
         lag_results = self._find_time_lag(max_lag=max_lag)
         print("Lag results:", lag_results)
