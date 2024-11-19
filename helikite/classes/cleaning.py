@@ -917,12 +917,47 @@ class Cleaner:
                     instrument, window_size=rolling_window_size
                 )
 
+        # correct the other instrument pressure with the reference pressure
+        def matchpress(dfpressure, refpresFC, takeofftimeFL, walktime):
+            try:
+                # if df.empty:
+                #     # df_n=df.copy()
+                #     # diffpress = 0
+                #     pass
+                # else:
+                # df_n=df.copy()
+                diffpress = (
+                    dfpressure.loc[
+                        takeofftimeFL - walktime : takeofftimeFL
+                    ].mean()
+                    - refpresFC
+                )
+                dfprescorr = dfpressure.sub(np.float64(diffpress))  # .iloc[0]
+            # catch when df1 is None
+            except AttributeError:
+                pass
+            # catch when it hasn't even been defined
+            except NameError:
+                pass
+            return dfprescorr
+
+        # # detrend mSEMS and STAP pressure measurements
+        def presdetrend(dfpressure, takeofftimeFL, landingtimeFL, preschange):
+            linearfit = np.linspace(
+                dfpressure.loc[takeofftimeFL],
+                dfpressure.loc[landingtimeFL],
+                len(dfpressure),
+            )  # landingtimeFL -preschange
+            # linearfit=np.linspace(dfpressure.loc[takeofftimeFL],dfpressure.dropna().iloc[-1]-preschange,len(dfpressure))#landingtimeFL
+            dfdetrend = dfpressure - linearfit + dfpressure.loc[takeofftimeFL]
+            return dfdetrend
+
         def df_derived_by_shift(df_init, lag=0, NON_DER=[]):
             df = df_init.copy()
             if not lag:
                 return df
             cols = {}
-            for i in range(1, 2 * lag + 1):
+            for i in range(1, 2 * lag):
                 for x in list(df.columns):
                     if x not in NON_DER:
                         if not x in cols:
@@ -943,71 +978,15 @@ class Cleaner:
             filter_inst = [col for col in df if col.startswith(instname)]
             df_inst = df[filter_inst].iloc[0]
             # print(len(df_inst),len(range),df_inst.loc[df_inst.idxmax(axis=0)])
-            df_inst = df_inst.set_axis(range, copy=False)
-            max_inst = max(df_inst)
-            lag_inst = df_inst.loc[df_inst.idxmax(axis=0)]
+            # df_inst = df_inst.set_axis(range, copy=False)
+            # max_inst = max(df_inst)
+            # lag_inst = df_inst.loc[df_inst.idxmax(axis=0)]
             # print(lag_inst)
             return df_inst  # ,max_inst,lag_inst
 
         # 0 is ignore because it's at the beginning of the df_corr, not
         # in the range
         rangelag = [i for i in range(-max_lag, max_lag + 1) if i != 0]
-        # instruments_with_pressure = [
-        #     instrument
-        #     for instrument in self._instruments
-        #     if self.pressure_column in instrument.df.columns
-        # ]
-        # Print all the columns of each instrument
-        # [
-        #     print(instrument.name, list(instrument.df.columns))
-        #     for instrument in instruments_with_pressure
-        # ]
-        # print(
-        #     [
-        #         instrument.df[self.pressure_column].rename(instrument.name)
-        #         for instrument in instruments_with_pressure
-        #     ]
-        # )
-
-        # Generate a df of just the pressure columns of all instruments, but
-        # with a unique column name for each instrument
-        # df_pressure = pd.concat(
-        #     [
-        #         instrument.df[self.pressure_column]
-        #         .reset_index()
-        #         .rename(instrument.name)
-        #         for instrument in instruments_with_pressure
-        #     ],
-        #     axis=1,
-        #     names=[
-        #         instrument.name for instrument in instruments_with_pressure
-        #     ],
-        # )
-
-        # df_pressure.columns = [
-        # instrument.name for instrument in instruments_with_pressure
-        # ]
-        # Step 1: Create a list of dataframes, each containing only the pressure column and renamed
-        # pressure_dfs = []
-        # for instrument in self._instruments:
-        #     if self.pressure_column in instrument.df.columns:
-        #         df = instrument.df[[self.pressure_column]].copy()
-        #         df.rename(
-        #             columns={self.pressure_column: instrument.name},
-        #             inplace=True,
-        #         )
-        #         pressure_dfs.append(df)
-        # for df in pressure_dfs:
-        #     print(df.columns[df.columns.duplicated()])
-        # for df in pressure_dfs:
-        #     print(df.shape)
-        # # Step 2: Merge all dataframes on their index
-        # df_pressure = pd.concat(pressure_dfs, axis=1)
-        # print(df_pressure)
-        # Step 3: Reset the index if needed
-        # df_pressure.reset_index(inplace=True)
-
-        # Merge all DFs on a the common index of the reference instrument
 
         df_pressure = self.reference_instrument.df[
             [self.pressure_column]
@@ -1019,11 +998,13 @@ class Cleaner:
 
         for instrument in self._instruments:
             if instrument == self.reference_instrument:
+                # Don't merge with itself
                 continue
 
             if self.pressure_column in instrument.df.columns:
                 print("Merging", instrument.name)
                 df = instrument.df[[self.pressure_column]].copy()
+                print("Columns", len(df.columns))
                 # Set the index to the same time type as the reference instrument
                 df.index = df.index.astype(
                     self.reference_instrument.df.index.dtype
@@ -1041,6 +1022,7 @@ class Cleaner:
                     left_index=True,
                     right_index=True,
                 )
+        # return df_pressure
         # print(df_pressure)
         # Create a new dataframe with the pressure columns shifted by the lags
         df_corr = df_derived_by_shift(
@@ -1049,10 +1031,14 @@ class Cleaner:
             NON_DER=[self.reference_instrument.name],
         ).dropna()
 
-        print("DF CORR", df_corr)
-        # df_corr = df_corr.dropna()
-        print("Correlation matrix", df_corr.corr())
+        # return df_corr
 
+        # print("DF CORR", df_corr.columns)
+        # df_corr = df_corr.dropna()
+        # print("Correlation matrix", df_corr.corr())
+
+        df_corrst = df_findtimelag(df_corr, rangelag, instname="pops")
+        print(df_corrst)
         # print("DF CORR post", df_corr)
 
         # lag_results = self._find_time_lag(max_lag=max_lag)
