@@ -988,37 +988,73 @@ class Cleaner:
         # instrument.name for instrument in instruments_with_pressure
         # ]
         # Step 1: Create a list of dataframes, each containing only the pressure column and renamed
-        pressure_dfs = []
+        # pressure_dfs = []
+        # for instrument in self._instruments:
+        #     if self.pressure_column in instrument.df.columns:
+        #         df = instrument.df[[self.pressure_column]].copy()
+        #         df.rename(
+        #             columns={self.pressure_column: instrument.name},
+        #             inplace=True,
+        #         )
+        #         pressure_dfs.append(df)
+        # for df in pressure_dfs:
+        #     print(df.columns[df.columns.duplicated()])
+        # for df in pressure_dfs:
+        #     print(df.shape)
+        # # Step 2: Merge all dataframes on their index
+        # df_pressure = pd.concat(pressure_dfs, axis=1)
+        # print(df_pressure)
+        # Step 3: Reset the index if needed
+        # df_pressure.reset_index(inplace=True)
+
+        # Merge all DFs on a the common index of the reference instrument
+
+        df_pressure = self.reference_instrument.df[
+            [self.pressure_column]
+        ].copy()
+        df_pressure.rename(
+            columns={self.pressure_column: self.reference_instrument.name},
+            inplace=True,
+        )
+
         for instrument in self._instruments:
+            if instrument == self.reference_instrument:
+                continue
+
             if self.pressure_column in instrument.df.columns:
+                print("Merging", instrument.name)
                 df = instrument.df[[self.pressure_column]].copy()
+                # Set the index to the same time type as the reference instrument
+                df.index = df.index.astype(
+                    self.reference_instrument.df.index.dtype
+                )
+
                 df.rename(
                     columns={self.pressure_column: instrument.name},
                     inplace=True,
                 )
-                pressure_dfs.append(df)
-        for df in pressure_dfs:
-            print(df.columns[df.columns.duplicated()])
-        for df in pressure_dfs:
-            print(df.shape)
-        # Step 2: Merge all dataframes on their index
-        df_pressure = pd.concat(pressure_dfs, axis=1)
-        print(df_pressure)
-        # Step 3: Reset the index if needed
-        # df_pressure.reset_index(inplace=True)
 
+                df_pressure = pd.merge_asof(
+                    df_pressure,
+                    df,
+                    # how="outer",
+                    left_index=True,
+                    right_index=True,
+                )
+        # print(df_pressure)
         # Create a new dataframe with the pressure columns shifted by the lags
-        df_corr = (
-            df_derived_by_shift(
-                df_pressure,
-                lag=max_lag,
-                NON_DER=[self.reference_instrument.name],
-            )
-            .dropna()
-            .corr()
-        )
+        df_corr = df_derived_by_shift(
+            df_pressure,
+            lag=max_lag,
+            NON_DER=[self.reference_instrument.name],
+        ).dropna()
 
-        print(df_corr)
+        print("DF CORR", df_corr)
+        # df_corr = df_corr.dropna()
+        print("Correlation matrix", df_corr.corr())
+
+        # print("DF CORR post", df_corr)
+
         # lag_results = self._find_time_lag(max_lag=max_lag)
         # print("Lag results:", lag_results)
 
