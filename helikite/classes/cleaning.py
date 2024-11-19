@@ -556,7 +556,6 @@ class Cleaner:
 
         Then plot the pressure measurements with the rolling window applied
         """
-
         if self.pressure_column not in instrument.df.columns:
             raise ValueError(
                 f"Note: {instrument.name} does not have a pressure column"
@@ -858,67 +857,152 @@ class Cleaner:
         max_lag=180,
         apply_rolling_window_to: list[Instrument] = [],
         rolling_window_size: int = constants.ROLLING_WINDOW_DEFAULT_SIZE,
+        reference_pressure_threshold: tuple[float, float] | None = None,
     ):
         """Correct time and pressure for each instrument based on time lag."""
+
+        if reference_pressure_threshold:
+            # Assert the tuple has two values (low, high)
+            assert len(reference_pressure_threshold) == 2, (
+                "The reference_pressure_threshold must be a tuple with two "
+                "values (low, high)"
+            )
+            assert (
+                reference_pressure_threshold[0]
+                < reference_pressure_threshold[1]
+            ), (
+                "The first value of the reference_pressure_threshold must be "
+                "lower than the second value"
+            )
+
+            # Apply the threshold to the reference instrument
+            self.reference_instrument.df[
+                constants.ROLLING_WINDOW_COLUMN_NAME
+            ] = self.reference_instrument.df[self.pressure_column].copy()
+            self.reference_instrument.df.loc[
+                (
+                    self.reference_instrument.df[
+                        constants.ROLLING_WINDOW_COLUMN_NAME
+                    ]
+                    > reference_pressure_threshold[1]
+                )
+                | (
+                    self.reference_instrument.df[
+                        constants.ROLLING_WINDOW_COLUMN_NAME
+                    ]
+                    < reference_pressure_threshold[0]
+                ),
+                constants.ROLLING_WINDOW_COLUMN_NAME,
+            ] = np.nan
+            self.reference_instrument.df[
+                constants.ROLLING_WINDOW_COLUMN_NAME
+            ] = (
+                self.reference_instrument.df[
+                    constants.ROLLING_WINDOW_COLUMN_NAME
+                ]
+                .interpolate()
+                .rolling(window=rolling_window_size)
+                .mean()
+            )
+            print(
+                f"Applied threshold of {reference_pressure_threshold} to "
+                f"{self.reference_instrument.name} on "
+                f"column '{constants.ROLLING_WINDOW_COLUMN_NAME}'"
+            )
 
         # Apply rolling window to pressure
         if apply_rolling_window_to:
             for instrument in apply_rolling_window_to:
-                print(f"Applying rolling window for {instrument.name}")
                 self._apply_rolling_window_to_pressure(
                     instrument, window_size=rolling_window_size
                 )
 
-        lag_results = self._find_time_lag(max_lag=max_lag)
-        print("Lag results:", lag_results)
+        def df_derived_by_shift(df_init, lag=0, NON_DER=[]):
+            df = df_init.copy()
+            if not lag:
+                return df
+            cols = {}
+            for i in range(1, 2 * lag + 1):
+                for x in list(df.columns):
+                    if x not in NON_DER:
+                        if not x in cols:
+                            cols[x] = ["{}_{}".format(x, i)]
+                        else:
+                            cols[x].append("{}_{}".format(x, i))
+            for k, v in cols.items():
+                columns = v
+                dfn = pd.DataFrame(data=None, columns=columns, index=df.index)
+                i = -lag
+                for c in columns:
+                    dfn[c] = df[k].shift(periods=i)
+                    i += 1
+                df = pd.concat([df, dfn], axis=1)  # , join_axes=[df.index])
+            return df
 
-        ref_pressure = self.reference_instrument.df[
-            self.pressure_column
-        ].dropna()
+        def df_findtimelag(df, range, instname=""):
+            filter_inst = [col for col in df if col.startswith(instname)]
+            df_inst = df[filter_inst].iloc[0]
+            # print(len(df_inst),len(range),df_inst.loc[df_inst.idxmax(axis=0)])
+            df_inst = df_inst.set_axis(range, copy=False)
+            max_inst = max(df_inst)
+            lag_inst = df_inst.loc[df_inst.idxmax(axis=0)]
+            # print(lag_inst)
+            return df_inst  # ,max_inst,lag_inst
 
-        for instrument in self._instruments:
-            if instrument.name in lag_results:
-                best_lag = lag_results[instrument.name]
+        # 0 is ignore because it's at the beginning of the df_corr, not
+        # in the range
+        rangelag = [i for i in range(-max_lag, max_lag + 1) if i != 0]
 
-                # Shift time index
-                instrument.df.index = instrument.df.index.shift(
-                    -best_lag, freq="s"
-                )
-                print(f"Shifted {instrument.name} by {best_lag} seconds")
+        # lag_results = self._find_time_lag(max_lag=max_lag)
+        # print("Lag results:", lag_results)
 
-                # Align pressures based on the reference instrument
-                inst_pressure = instrument.df[self.pressure_column].dropna()
+        # ref_pressure = self.reference_instrument.df[
+        #     self.pressure_column
+        # ].dropna()
 
-                # Get the common time index again after shifting
-                common_index = ref_pressure.index.intersection(
-                    instrument.df.index
-                )
+        # for instrument in self._instruments:
+        #     if instrument.name in lag_results:
+        #         best_lag = lag_results[instrument.name]
 
-                if len(common_index) == 0:
-                    print(
-                        "No overlapping data between "
-                        f"{self.reference_instrument.name} and "
-                        f"{instrument.name} after shifting. Skipping pressure "
-                        "alignment."
-                    )
-                    continue
+        #         # Shift time index
+        #         instrument.df.index = instrument.df.index.shift(
+        #             -best_lag, freq="s"
+        #         )
+        #         print(f"Shifted {instrument.name} by {best_lag} seconds")
 
-                # Subtract the mean difference in pressure during the common
-                # time window
-                ref_pressure_aligned = ref_pressure.loc[common_index]
-                inst_pressure_aligned = inst_pressure.loc[common_index]
+        #         # Align pressures based on the reference instrument
+        #         inst_pressure = instrument.df[self.pressure_column].dropna()
 
-                # Calculate the mean difference in pressure
-                mean_diff = (
-                    inst_pressure_aligned.mean() - ref_pressure_aligned.mean()
-                )
+        #         # Get the common time index again after shifting
+        #         common_index = ref_pressure.index.intersection(
+        #             instrument.df.index
+        #         )
 
-                # Adjust the instrument's pressure by subtracting the mean
-                # difference
-                instrument.df[self.pressure_column] = (
-                    instrument.df[self.pressure_column] - mean_diff
-                )
-                print(
-                    f"Adjusted pressure for {instrument.name} by "
-                    f"{mean_diff:.2f} hPa"
-                )
+        #         if len(common_index) == 0:
+        #             print(
+        #                 "No overlapping data between "
+        #                 f"{self.reference_instrument.name} and "
+        #                 f"{instrument.name} after shifting. Skipping pressure "
+        #                 "alignment."
+        #             )
+        #             continue
+
+        #         # Subtract the mean difference in pressure during the common
+        #         # time window
+        #         ref_pressure_aligned = ref_pressure.loc[common_index]
+        #         inst_pressure_aligned = inst_pressure.loc[common_index]
+
+        #         # Calculate the mean difference in pressure
+        #         mean_diff = (
+        #             inst_pressure_aligned.mean() - ref_pressure_aligned.mean()
+        #         )
+
+        #         # Adjust the instrument's pressure by subtracting the mean
+        #         # difference
+        #         instrument.df[self.pressure_column] = (
+        #             instrument.df[self.pressure_column] - mean_diff
+        #         )
+        #         print(
+        #             f"Adjusted pressure for {instrument.name} by "
+        #             f"{mean_diff:.2f} hPa"
+        #         )
