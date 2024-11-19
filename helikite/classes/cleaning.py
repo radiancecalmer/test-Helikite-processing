@@ -952,7 +952,73 @@ class Cleaner:
         # 0 is ignore because it's at the beginning of the df_corr, not
         # in the range
         rangelag = [i for i in range(-max_lag, max_lag + 1) if i != 0]
+        # instruments_with_pressure = [
+        #     instrument
+        #     for instrument in self._instruments
+        #     if self.pressure_column in instrument.df.columns
+        # ]
+        # Print all the columns of each instrument
+        # [
+        #     print(instrument.name, list(instrument.df.columns))
+        #     for instrument in instruments_with_pressure
+        # ]
+        # print(
+        #     [
+        #         instrument.df[self.pressure_column].rename(instrument.name)
+        #         for instrument in instruments_with_pressure
+        #     ]
+        # )
 
+        # Generate a df of just the pressure columns of all instruments, but
+        # with a unique column name for each instrument
+        # df_pressure = pd.concat(
+        #     [
+        #         instrument.df[self.pressure_column]
+        #         .reset_index()
+        #         .rename(instrument.name)
+        #         for instrument in instruments_with_pressure
+        #     ],
+        #     axis=1,
+        #     names=[
+        #         instrument.name for instrument in instruments_with_pressure
+        #     ],
+        # )
+
+        # df_pressure.columns = [
+        # instrument.name for instrument in instruments_with_pressure
+        # ]
+        # Step 1: Create a list of dataframes, each containing only the pressure column and renamed
+        pressure_dfs = []
+        for instrument in self._instruments:
+            if self.pressure_column in instrument.df.columns:
+                df = instrument.df[[self.pressure_column]].copy()
+                df.rename(
+                    columns={self.pressure_column: instrument.name},
+                    inplace=True,
+                )
+                pressure_dfs.append(df)
+        for df in pressure_dfs:
+            print(df.columns[df.columns.duplicated()])
+        for df in pressure_dfs:
+            print(df.shape)
+        # Step 2: Merge all dataframes on their index
+        df_pressure = pd.concat(pressure_dfs, axis=1)
+        print(df_pressure)
+        # Step 3: Reset the index if needed
+        # df_pressure.reset_index(inplace=True)
+
+        # Create a new dataframe with the pressure columns shifted by the lags
+        df_corr = (
+            df_derived_by_shift(
+                df_pressure,
+                lag=max_lag,
+                NON_DER=[self.reference_instrument.name],
+            )
+            .dropna()
+            .corr()
+        )
+
+        print(df_corr)
         # lag_results = self._find_time_lag(max_lag=max_lag)
         # print("Lag results:", lag_results)
 
