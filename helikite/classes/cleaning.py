@@ -1021,7 +1021,7 @@ class Cleaner:
                     f"{instrument.corr_max_val} "
                     f"@ idx: {instrument.corr_max_idx}"
                 )
-                instrument.lagshift_df = crosscorrelation.df_lagshift(
+                instrument.df = crosscorrelation.df_lagshift(
                     instrument.df,
                     self.reference_instrument.df,
                     instrument.corr_max_idx,

@@ -56,17 +56,31 @@ def df_lagshift(df_instrument, df_reference, index, instname=""):
     """
     print(f"Shifting {instname} by {index} index")
 
+    # Add columns to the reference, so we know which to delete later
+    # df_reference.columns = [f"{col}_ref" for col in df_reference.columns]
+    df_instrument = df_instrument.copy()
+    print("df length", len(df_instrument))
+    print("df reference length", len(df_reference))
+    df_reference = df_reference.copy()
     # Match timestamp resolution of the reference data
     df_instrument.index = df_instrument.index.astype(df_reference.index.dtype)
+
+    # Merge the two dataframes
     df = pd.merge_asof(
         df_reference,
         df_instrument,
         left_index=True,
         right_index=True,
+        suffixes=("", "_ref"),
     )
 
     df_syn = df.shift(periods=index, axis=0)
-    df_syn = df_syn.set_index(df_reference.index)
+    # df_syn = df_syn.set_index(df_reference.index)
+
+    # Drop the reference columns (any which has _ref in the suffix)
+    columns_to_drop = [col for col in df.columns if "_ref" in col]
+    if columns_to_drop:
+        df = df.drop(columns=columns_to_drop)
 
     return df_syn
 
