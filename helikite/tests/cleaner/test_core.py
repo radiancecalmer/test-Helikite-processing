@@ -27,7 +27,7 @@ def test_set_pressure_column(campaign_data):
         flight_date=datetime.date(2023, 1, 1),
     )
 
-    cleaner.set_pressure_column(column_name="pressure")
+    cleaner.set_pressure_column(column_name_override="pressure")
     assert "pressure" in instrument1.df.columns
 
 

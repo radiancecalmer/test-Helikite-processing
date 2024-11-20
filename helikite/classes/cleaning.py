@@ -91,6 +91,8 @@ class Cleaner:
             )
             instrument.df = instrument.df_raw.copy(deep=True)
             instrument.date = flight_date
+            instrument.pressure_column = self.pressure_column
+            instrument._rolling_window_column = None
             instrument.time_offset = {}
             instrument.time_offset["hour"] = time_offset.hour
             instrument.time_offset["minute"] = time_offset.minute
@@ -235,21 +237,25 @@ class Cleaner:
     @function_dependencies(use_once=True)
     def set_pressure_column(
         self,
-        column_name: str = constants.HOUSEKEEPING_VAR_PRESSURE,
+        column_name_override: str | None = None,
     ) -> None:
         """Set the pressure column for each instrument's dataframe"""
 
         success = []
         errors = []
-        if column_name != constants.HOUSEKEEPING_VAR_PRESSURE:
-            print("Updating pressure column to", column_name)
-            self.pressure_column = column_name
+        if (
+            column_name_override
+            and column_name_override != self.pressure_column
+        ):
+            print("Updating pressure column to", column_name_override)
+            self.pressure_column = column_name_override
 
         for instrument in self._instruments:
             try:
+                instrument.pressure_column = column_name_override
                 instrument.df = (
                     instrument.set_housekeeping_pressure_offset_variable(
-                        instrument.df, self.pressure_column
+                        instrument.df, instrument.pressure_column
                     )
                 )
                 success.append(instrument.name)
@@ -364,7 +370,7 @@ class Cleaner:
 
         for instrument in self._instruments:
             # Check that the column exists
-            if self.pressure_column not in instrument.df.columns:
+            if instrument.pressure_column not in instrument.df.columns:
                 print(
                     f"Note: {instrument.name} does not have a pressure column"
                 )
@@ -372,7 +378,7 @@ class Cleaner:
             fig.add_trace(
                 go.Scatter(
                     x=instrument.df.index,
-                    y=instrument.df[self.pressure_column],
+                    y=instrument.df[instrument.pressure_column],
                     name=instrument.name,
                 )
             )
@@ -556,16 +562,18 @@ class Cleaner:
 
         Then plot the pressure measurements with the rolling window applied
         """
-        if self.pressure_column not in instrument.df.columns:
+        if instrument.pressure_column not in instrument.df.columns:
             raise ValueError(
                 f"Note: {instrument.name} does not have a pressure column"
             )
 
         instrument.df[column_name] = (
-            instrument.df[self.pressure_column]
+            instrument.df[instrument.pressure_column]
             .rolling(window=window_size)
             .mean()
         )
+
+        instrument._rolling_window_column = column_name
 
         print(
             f"Applied rolling window to pressure for {instrument.name}"
@@ -677,7 +685,7 @@ class Cleaner:
         # Iterate through instruments to plot pressure data
         for instrument in self._instruments:
             # Check if the pressure column exists in the instrument dataframe
-            if self.pressure_column not in instrument.df.columns:
+            if instrument.pressure_column not in instrument.df.columns:
                 print(
                     f"Note: {instrument.name} does not have a pressure column"
                 )
@@ -690,7 +698,7 @@ class Cleaner:
                 fig.add_trace(
                     go.Scatter(
                         x=instrument.df.index,
-                        y=instrument.df[self.pressure_column],
+                        y=instrument.df[instrument.pressure_column],
                         name=instrument.name,
                         line=dict(width=2, color="red"),
                         opacity=1,
@@ -700,7 +708,7 @@ class Cleaner:
                 fig.add_trace(
                     go.Scatter(
                         x=instrument.df.index,
-                        y=instrument.df[self.pressure_column],
+                        y=instrument.df[instrument.pressure_column],
                         name=instrument.name,
                         line=dict(width=1, color="grey"),
                         opacity=0.25,
@@ -729,121 +737,6 @@ class Cleaner:
         # Show plot with interactive click functionality
         return VBox([fig, out])  # Use VBox to stack the plot and output
 
-    # def _crosscorr(self, datax, datay, lag=0):
-    #     """Lag-N cross correlation."""
-    #     return datax.corr(datay.shift(lag))
-
-    # def _df_derived_by_shift(self, df_init, lag=0, NON_DER=[]):
-    #     self._df_shifted = df_init.copy()
-
-    #     if not lag:
-    #         return self._df_shifted
-
-    #     cols = {}
-    #     for i in range(1, 2 * lag + 1):
-    #         for x in list(self._df_shifted.columns):
-    #             if x not in NON_DER:
-    #                 if x not in cols:
-    #                     cols[x] = ["{}_{}".format(x, i)]
-    #                 else:
-    #                     cols[x].append("{}_{}".format(x, i))
-
-    #     for k, v in cols.items():
-    #         columns = v
-    #         self._df_shifted_n = pd.DataFrame(
-    #             data=None, columns=columns, index=self._df_shifted.index
-    #         )
-    #         i = -lag
-    #         for c in columns:
-    #             self._df_shifted_n[c] = self._df_shifted[k].shift(periods=i)
-    #             i += 1
-    #         df = pd.concat([self._df_shifted, self._df_shifted_n], axis=1)
-
-    #     return df
-
-    # def df_findtimelag(self, df, range, instname=""):
-    #     filter_inst = [col for col in df if col.startswith(instname)]
-    #     df_inst = df[filter_inst].iloc[0]
-    #     # print(len(df_inst),len(range),df_inst.loc[df_inst.idxmax(axis=0)])
-    #     df_inst = df_inst.set_axis(range, copy=False)
-    #     max_inst = max(df_inst)
-    #     lag_inst = df_inst.loc[df_inst.idxmax(axis=0)]
-    #     # print(lag_inst)
-    #     return df_inst  # ,max_inst,lag_inst
-
-    # def _find_time_lag(self, max_lag=180):
-    #     """Find time lag between instrument and reference pressure"""
-    #     if self.pressure_column not in self.reference_instrument.df.columns:
-    #         raise KeyError(
-    #             f"Pressure column '{self.pressure_column}' not found in "
-    #             "reference instrument '{self.reference_instrument.name}'"
-    #         )
-
-    #     ref_pressure = self.reference_instrument.df[
-    #         self.pressure_column
-    #     ].dropna()
-    #     ref_pressure = ref_pressure.sort_index()
-
-    #     lag_results = {}
-
-    #     for instrument in self._instruments:
-    #         if instrument == self.reference_instrument:
-    #             continue
-
-    #         # Check if the pressure column exists in this instrument
-    #         if self.pressure_column not in instrument.df.columns:
-    #             print(
-    #                 f"Skipping {instrument.name}: '{self.pressure_column}' "
-    #                 "column not found."
-    #             )
-    #             continue
-
-    #         instrument_pressure = instrument.df[self.pressure_column].dropna()
-    #         instrument_pressure = instrument_pressure.sort_index()
-
-    #         # Align the indexes between the reference and current instrument
-    #         common_index = ref_pressure.index.intersection(
-    #             instrument_pressure.index
-    #         )
-    #         if len(common_index) == 0:
-    #             print(
-    #                 f"No common data between {self.reference_instrument.name} "
-    #                 "and {instrument.name}. Skipping..."
-    #             )
-    #             continue
-
-    #         ref_pressure_aligned = ref_pressure.loc[common_index]
-    #         inst_pressure_aligned = instrument_pressure.loc[common_index]
-
-    #         if (
-    #             len(ref_pressure_aligned) == 0
-    #             or len(inst_pressure_aligned) == 0
-    #         ):
-    #             print(
-    #                 f"No valid overlapping data for {instrument.name}. "
-    #                 "Skipping..."
-    #             )
-    #             continue
-
-    #         # Compute cross-correlation for different lags
-    #         lags = range(-max_lag, max_lag + 1)
-    #         corrs = [
-    #             self._crosscorr(
-    #                 ref_pressure_aligned, inst_pressure_aligned, lag
-    #             )
-    #             for lag in lags
-    #         ]
-    #         best_lag = lags[
-    #             np.nanargmax(corrs)
-    #         ]  # Find the lag with max correlation, ignoring NaNs
-
-    #         print(f"Best lag for {instrument.name}: {best_lag} seconds")
-
-    #         # Store the lag
-    #         lag_results[instrument.name] = best_lag
-
-    #     return lag_results
-
     @function_dependencies(
         [
             "set_time_as_index",
@@ -857,19 +750,20 @@ class Cleaner:
         max_lag=180,
         apply_rolling_window_to: list[Instrument] = [],
         rolling_window_size: int = constants.ROLLING_WINDOW_DEFAULT_SIZE,
-        reference_pressure_threshold: tuple[float, float] | None = None,
+        reference_pressure_thresholds: tuple[float, float] | None = None,
+        detrend_pressure_on: list[Instrument] = [],
     ):
         """Correct time and pressure for each instrument based on time lag."""
 
-        if reference_pressure_threshold:
+        if reference_pressure_thresholds:
             # Assert the tuple has two values (low, high)
-            assert len(reference_pressure_threshold) == 2, (
+            assert len(reference_pressure_thresholds) == 2, (
                 "The reference_pressure_threshold must be a tuple with two "
                 "values (low, high)"
             )
             assert (
-                reference_pressure_threshold[0]
-                < reference_pressure_threshold[1]
+                reference_pressure_thresholds[0]
+                < reference_pressure_thresholds[1]
             ), (
                 "The first value of the reference_pressure_threshold must be "
                 "lower than the second value"
@@ -878,19 +772,21 @@ class Cleaner:
             # Apply the threshold to the reference instrument
             self.reference_instrument.df[
                 constants.ROLLING_WINDOW_COLUMN_NAME
-            ] = self.reference_instrument.df[self.pressure_column].copy()
+            ] = self.reference_instrument.df[
+                self.reference_instrument.pressure_column
+            ].copy()
             self.reference_instrument.df.loc[
                 (
                     self.reference_instrument.df[
                         constants.ROLLING_WINDOW_COLUMN_NAME
                     ]
-                    > reference_pressure_threshold[1]
+                    > reference_pressure_thresholds[1]
                 )
                 | (
                     self.reference_instrument.df[
                         constants.ROLLING_WINDOW_COLUMN_NAME
                     ]
-                    < reference_pressure_threshold[0]
+                    < reference_pressure_thresholds[0]
                 ),
                 constants.ROLLING_WINDOW_COLUMN_NAME,
             ] = np.nan
@@ -905,7 +801,7 @@ class Cleaner:
                 .mean()
             )
             print(
-                f"Applied threshold of {reference_pressure_threshold} to "
+                f"Applied threshold of {reference_pressure_thresholds} to "
                 f"{self.reference_instrument.name} on "
                 f"column '{constants.ROLLING_WINDOW_COLUMN_NAME}'"
             )
@@ -914,7 +810,9 @@ class Cleaner:
         if apply_rolling_window_to:
             for instrument in apply_rolling_window_to:
                 self._apply_rolling_window_to_pressure(
-                    instrument, window_size=rolling_window_size
+                    instrument,
+                    window_size=rolling_window_size,
+                    column_name=instrument.pressure_variable,
                 )
 
         # 0 is ignore because it's at the beginning of the df_corr, not
@@ -922,10 +820,12 @@ class Cleaner:
         rangelag = [i for i in range(-max_lag, max_lag + 1) if i != 0]
 
         df_pressure = self.reference_instrument.df[
-            [self.pressure_column]
+            [self.reference_instrument.pressure_column]
         ].copy()
         df_pressure.rename(
-            columns={self.pressure_column: self.reference_instrument.name},
+            columns={
+                self.reference_instrument.pressure_column: self.reference_instrument.name  # noqa
+            },
             inplace=True,
         )
 
@@ -934,14 +834,14 @@ class Cleaner:
                 # We principally use the ref for this, don't merge with itself
                 continue
 
-            if self.pressure_column in instrument.df.columns:
-                df = instrument.df[[self.pressure_column]].copy()
+            if instrument.pressure_column in instrument.df.columns:
+                df = instrument.df[[instrument.pressure_column]].copy()
                 df.index = df.index.astype(
                     self.reference_instrument.df.index.dtype
                 )
 
                 df.rename(
-                    columns={self.pressure_column: instrument.name},
+                    columns={instrument.pressure_column: instrument.name},
                     inplace=True,
                 )
 
@@ -952,49 +852,41 @@ class Cleaner:
                     right_index=True,
                 )
 
-        # ######
-        # df_merge = self.reference_instrument.df[[self.pressure_column]].copy()
-        # # df_merge.rename(
-        # #     columns={self.pressure_column: self.reference_instrument.name},
-        # #     inplace=True,
-        # # )
-
-        # # Prefix all the columns with the instrument name
-        # df_merge.columns = [
-        #     f"{self.reference_instrument.name}_{col}"
-        #     for col in df_merge.columns
-        # ]
-
-        # for instrument in self._instruments:
-        #     if instrument == self.reference_instrument:
-        #         # We principally use the ref for this, don't merge with itself
-        #         continue
-
-        #     if self.pressure_column in instrument.df.columns:
-        #         df = instrument.df.copy()
-        #         df.index = df.index.astype(
-        #             self.reference_instrument.df.index.dtype
-        #         )
-
-        #         # Prefix all the columns with the instrument name
-        #         df.columns = [f"{instrument.name}_{col}" for col in df.columns]
-
-        #         # df.rename(
-        #         #     columns={self.pressure_column: instrument.name},
-        #         #     inplace=True,
-        #         # )
-
-        #         df_merge = pd.merge_asof(
-        #             df_merge,
-        #             df,
-        #             left_index=True,
-        #             right_index=True,
-        #         )
-
-        # # Create a pressure df with only the pressure columns
-        # df_pressure = df_merge.copy().filter(like=self.pressure_column)
-
-        # ############
+        if detrend_pressure_on:
+            print("Index of df_pressure", df_pressure.index)
+            print("self.time_trim_from", self.time_trim_from)
+            print("self.time_trim_to", self.time_trim_to)
+            print("Columns of df_pressure", df_pressure.columns)
+            print(df_pressure)
+            takeofftime = df_pressure.index.asof(
+                pd.Timestamp(self.time_trim_from)
+            )
+            landingtime = df_pressure.index.asof(
+                pd.Timestamp(self.time_trim_to)
+            )
+            if takeofftime is None or landingtime is None:
+                raise ValueError(
+                    "Could not find takeoff or landing time in the pressure "
+                    "data. Check the time range and the pressure data. "
+                    f"The takeoff time is {takeofftime} @ "
+                    f"{self.time_trim_from} and the landing time "
+                    f"is {landingtime} @ {self.time_trim_to}."
+                )
+            for instrument in detrend_pressure_on:
+                if instrument.name not in df_pressure.columns:
+                    raise ValueError(
+                        f"{instrument.name} not in df_pressure columns. "
+                        f"Available columns: {df_pressure.columns}"
+                    )
+                df_pressure[instrument.name] = crosscorrelation.presdetrend(
+                    df_pressure[instrument.name],
+                    takeofftime,
+                    landingtime,
+                )
+                print(
+                    f"Detrended pressure for {instrument.name} on column "
+                    f"'{instrument.pressure_column}'"
+                )
 
         df_new = crosscorrelation.df_derived_by_shift(
             df_pressure,
@@ -1006,7 +898,7 @@ class Cleaner:
 
         for instrument in self._instruments:
             if (
-                self.pressure_column in instrument.df.columns
+                instrument.pressure_column in instrument.df.columns
                 and instrument != self.reference_instrument
             ):
                 instrument.corr_df = crosscorrelation.df_findtimelag(

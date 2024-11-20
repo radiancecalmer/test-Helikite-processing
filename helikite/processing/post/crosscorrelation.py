@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 
 def crosscorr(datax, datay, lag=10):
@@ -75,9 +76,6 @@ def df_lagshift(df_instrument, df_reference, index, instname=""):
     )
 
     df_syn = df.shift(periods=index, axis=0)
-    # df_syn = df_syn.set_index(df_reference.index)
-
-    # Drop the reference columns (any which has _ref in the suffix)
     columns_to_drop = [col for col in df.columns if "_ref" in col]
     if columns_to_drop:
         df = df.drop(columns=columns_to_drop)
@@ -88,12 +86,6 @@ def df_lagshift(df_instrument, df_reference, index, instname=""):
 # correct the other instrument pressure with the reference pressure
 def matchpress(dfpressure, refpresFC, takeofftimeFL, walktime):
     try:
-        # if df.empty:
-        #     # df_n=df.copy()
-        #     # diffpress = 0
-        #     pass
-        # else:
-        # df_n=df.copy()
         diffpress = (
             dfpressure.loc[takeofftimeFL - walktime : takeofftimeFL].mean()
             - refpresFC
@@ -108,13 +100,30 @@ def matchpress(dfpressure, refpresFC, takeofftimeFL, walktime):
     return dfprescorr
 
 
-# # detrend mSEMS and STAP pressure measurements
-def presdetrend(dfpressure, takeofftimeFL, landingtimeFL, preschange):
+def presdetrend(dfpressure, takeofftimeFL, landingtimeFL):
+    """detrend instrument pressure measurements"""
+    print("take off location", dfpressure.loc[takeofftimeFL])
+    print("landing location", dfpressure.loc[landingtimeFL])
+    print("length of dfpressure", len(dfpressure))
+
+    # Check for NA values and handle them
+    start_pressure = dfpressure.loc[takeofftimeFL]
+    end_pressure = dfpressure.loc[landingtimeFL]
+
+    if pd.isna(start_pressure) or pd.isna(end_pressure):
+        print(
+            "Warning: NA values found in pressure data at takeoff or landing time."
+        )
+        # Use the first and last non-NA values as fallback
+        start_pressure = dfpressure.dropna().iloc[0]
+        end_pressure = dfpressure.dropna().iloc[-1]
+
     linearfit = np.linspace(
-        dfpressure.loc[takeofftimeFL],
-        dfpressure.loc[landingtimeFL],
+        start_pressure,
+        end_pressure,
         len(dfpressure),
-    )  # landingtimeFL -preschange
-    # linearfit=np.linspace(dfpressure.loc[takeofftimeFL],dfpressure.dropna().iloc[-1]-preschange,len(dfpressure))#landingtimeFL
-    dfdetrend = dfpressure - linearfit + dfpressure.loc[takeofftimeFL]
+    )
+
+    dfdetrend = dfpressure - linearfit + start_pressure
+
     return dfdetrend
