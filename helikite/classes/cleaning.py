@@ -917,73 +917,6 @@ class Cleaner:
                     instrument, window_size=rolling_window_size
                 )
 
-        # correct the other instrument pressure with the reference pressure
-        def matchpress(dfpressure, refpresFC, takeofftimeFL, walktime):
-            try:
-                # if df.empty:
-                #     # df_n=df.copy()
-                #     # diffpress = 0
-                #     pass
-                # else:
-                # df_n=df.copy()
-                diffpress = (
-                    dfpressure.loc[
-                        takeofftimeFL - walktime : takeofftimeFL
-                    ].mean()
-                    - refpresFC
-                )
-                dfprescorr = dfpressure.sub(np.float64(diffpress))  # .iloc[0]
-            # catch when df1 is None
-            except AttributeError:
-                pass
-            # catch when it hasn't even been defined
-            except NameError:
-                pass
-            return dfprescorr
-
-        # # detrend mSEMS and STAP pressure measurements
-        def presdetrend(dfpressure, takeofftimeFL, landingtimeFL, preschange):
-            linearfit = np.linspace(
-                dfpressure.loc[takeofftimeFL],
-                dfpressure.loc[landingtimeFL],
-                len(dfpressure),
-            )  # landingtimeFL -preschange
-            # linearfit=np.linspace(dfpressure.loc[takeofftimeFL],dfpressure.dropna().iloc[-1]-preschange,len(dfpressure))#landingtimeFL
-            dfdetrend = dfpressure - linearfit + dfpressure.loc[takeofftimeFL]
-            return dfdetrend
-
-        def df_derived_by_shift(df_init, lag=0, NON_DER=[]):
-            df = df_init.copy()
-            if not lag:
-                return df
-            cols = {}
-            for i in range(1, 2 * lag):
-                for x in list(df.columns):
-                    if x not in NON_DER:
-                        if not x in cols:
-                            cols[x] = ["{}_{}".format(x, i)]
-                        else:
-                            cols[x].append("{}_{}".format(x, i))
-            for k, v in cols.items():
-                columns = v
-                dfn = pd.DataFrame(data=None, columns=columns, index=df.index)
-                i = -lag
-                for c in columns:
-                    dfn[c] = df[k].shift(periods=i)
-                    i += 1
-                df = pd.concat([df, dfn], axis=1)  # , join_axes=[df.index])
-            return df
-
-        def df_findtimelag(df, range, instname=""):
-            filter_inst = [col for col in df if col.startswith(instname)]
-            df_inst = df[filter_inst].iloc[0]
-            # print(len(df_inst),len(range),df_inst.loc[df_inst.idxmax(axis=0)])
-            # df_inst = df_inst.set_axis(range, copy=False)
-            # max_inst = max(df_inst)
-            # lag_inst = df_inst.loc[df_inst.idxmax(axis=0)]
-            # print(lag_inst)
-            return df_inst  # ,max_inst,lag_inst
-
         # 0 is ignore because it's at the beginning of the df_corr, not
         # in the range
         rangelag = [i for i in range(-max_lag, max_lag + 1) if i != 0]
@@ -998,14 +931,11 @@ class Cleaner:
 
         for instrument in self._instruments:
             if instrument == self.reference_instrument:
-                # Don't merge with itself
+                # We principally use the ref for this, don't merge with itself
                 continue
 
             if self.pressure_column in instrument.df.columns:
-                print("Merging", instrument.name)
                 df = instrument.df[[self.pressure_column]].copy()
-                print("Columns", len(df.columns))
-                # Set the index to the same time type as the reference instrument
                 df.index = df.index.astype(
                     self.reference_instrument.df.index.dtype
                 )
@@ -1018,79 +948,121 @@ class Cleaner:
                 df_pressure = pd.merge_asof(
                     df_pressure,
                     df,
-                    # how="outer",
                     left_index=True,
                     right_index=True,
                 )
-        # return df_pressure
-        # print(df_pressure)
-        # Create a new dataframe with the pressure columns shifted by the lags
-        df_corr = df_derived_by_shift(
+
+        # ######
+        # df_merge = self.reference_instrument.df[[self.pressure_column]].copy()
+        # # df_merge.rename(
+        # #     columns={self.pressure_column: self.reference_instrument.name},
+        # #     inplace=True,
+        # # )
+
+        # # Prefix all the columns with the instrument name
+        # df_merge.columns = [
+        #     f"{self.reference_instrument.name}_{col}"
+        #     for col in df_merge.columns
+        # ]
+
+        # for instrument in self._instruments:
+        #     if instrument == self.reference_instrument:
+        #         # We principally use the ref for this, don't merge with itself
+        #         continue
+
+        #     if self.pressure_column in instrument.df.columns:
+        #         df = instrument.df.copy()
+        #         df.index = df.index.astype(
+        #             self.reference_instrument.df.index.dtype
+        #         )
+
+        #         # Prefix all the columns with the instrument name
+        #         df.columns = [f"{instrument.name}_{col}" for col in df.columns]
+
+        #         # df.rename(
+        #         #     columns={self.pressure_column: instrument.name},
+        #         #     inplace=True,
+        #         # )
+
+        #         df_merge = pd.merge_asof(
+        #             df_merge,
+        #             df,
+        #             left_index=True,
+        #             right_index=True,
+        #         )
+
+        # # Create a pressure df with only the pressure columns
+        # df_pressure = df_merge.copy().filter(like=self.pressure_column)
+
+        # ############
+
+        df_new = crosscorrelation.df_derived_by_shift(
             df_pressure,
             lag=max_lag,
             NON_DER=[self.reference_instrument.name],
-        ).dropna()
+        )
+        df_new = df_new.dropna()
+        df_corr = df_new.corr()
 
-        # return df_corr
+        for instrument in self._instruments:
+            if (
+                self.pressure_column in instrument.df.columns
+                and instrument != self.reference_instrument
+            ):
+                instrument.corr_df = crosscorrelation.df_findtimelag(
+                    df_corr, rangelag, instname=f"{instrument.name}_"
+                )
 
-        # print("DF CORR", df_corr.columns)
-        # df_corr = df_corr.dropna()
-        # print("Correlation matrix", df_corr.corr())
+                instrument.corr_max_val = max(instrument.corr_df)
+                instrument.corr_max_idx = instrument.corr_df.idxmax(axis=0)
 
-        df_corrst = df_findtimelag(df_corr, rangelag, instname="pops")
-        print(df_corrst)
-        # print("DF CORR post", df_corr)
+                print(
+                    f"Instrument: {instrument.name} | Max val "
+                    f"{instrument.corr_max_val} "
+                    f"@ idx: {instrument.corr_max_idx}"
+                )
+                instrument.lagshift_df = crosscorrelation.df_lagshift(
+                    instrument.df,
+                    self.reference_instrument.df,
+                    instrument.corr_max_idx,
+                    f"{instrument.name}_",
+                )
+            else:
+                print("No pressure column")
 
-        # lag_results = self._find_time_lag(max_lag=max_lag)
-        # print("Lag results:", lag_results)
+        # Plot the corr_df for each instrument on one plot
+        fig = go.Figure()
+        for instrument in self._instruments:
+            if hasattr(instrument, "corr_df"):
+                fig.add_trace(
+                    go.Scatter(
+                        x=instrument.corr_df.index,
+                        y=instrument.corr_df,
+                        name=instrument.name,
+                    )
+                )
 
-        # ref_pressure = self.reference_instrument.df[
-        #     self.pressure_column
-        # ].dropna()
+        fig.update_layout(
+            title="Cross-correlation",
+            xaxis_title="Lag (s)",
+            yaxis_title="Correlation",
+            height=800,
+            width=1000,
+        )
 
+        fig.show()
+
+        # # Again, merge the dataframes with merge_asof to the reference
+        # # instrument and apply the lag shift with crosscorrelation.df_lagshift
+        # # to the other instruments
         # for instrument in self._instruments:
-        #     if instrument.name in lag_results:
-        #         best_lag = lag_results[instrument.name]
-
-        #         # Shift time index
-        #         instrument.df.index = instrument.df.index.shift(
-        #             -best_lag, freq="s"
-        #         )
-        #         print(f"Shifted {instrument.name} by {best_lag} seconds")
-
-        #         # Align pressures based on the reference instrument
-        #         inst_pressure = instrument.df[self.pressure_column].dropna()
-
-        #         # Get the common time index again after shifting
-        #         common_index = ref_pressure.index.intersection(
-        #             instrument.df.index
-        #         )
-
-        #         if len(common_index) == 0:
-        #             print(
-        #                 "No overlapping data between "
-        #                 f"{self.reference_instrument.name} and "
-        #                 f"{instrument.name} after shifting. Skipping pressure "
-        #                 "alignment."
-        #             )
-        #             continue
-
-        #         # Subtract the mean difference in pressure during the common
-        #         # time window
-        #         ref_pressure_aligned = ref_pressure.loc[common_index]
-        #         inst_pressure_aligned = inst_pressure.loc[common_index]
-
-        #         # Calculate the mean difference in pressure
-        #         mean_diff = (
-        #             inst_pressure_aligned.mean() - ref_pressure_aligned.mean()
-        #         )
-
-        #         # Adjust the instrument's pressure by subtracting the mean
-        #         # difference
-        #         instrument.df[self.pressure_column] = (
-        #             instrument.df[self.pressure_column] - mean_diff
-        #         )
-        #         print(
-        #             f"Adjusted pressure for {instrument.name} by "
-        #             f"{mean_diff:.2f} hPa"
+        #     if (
+        #         self.pressure_column in instrument.df.columns
+        #         and instrument != self.reference_instrument
+        #     ):
+        #         instrument.df = crosscorrelation.df_lagshift(
+        #             instrument.df,
+        #             self.reference_instrument.df,
+        #             instrument.corr_max_idx,
+        #             f"{instrument.name}_",
         #         )
