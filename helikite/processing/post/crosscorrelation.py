@@ -60,8 +60,7 @@ def df_lagshift(df_instrument, df_reference, index, instname=""):
     # Add columns to the reference, so we know which to delete later
     # df_reference.columns = [f"{col}_ref" for col in df_reference.columns]
     df_instrument = df_instrument.copy()
-    print("df length", len(df_instrument))
-    print("df reference length", len(df_reference))
+
     df_reference = df_reference.copy()
     # Match timestamp resolution of the reference data
     df_instrument.index = df_instrument.index.astype(df_reference.index.dtype)
@@ -110,6 +109,7 @@ def presdetrend(dfpressure, takeofftimeFL, landingtimeFL):
     start_pressure = dfpressure.loc[takeofftimeFL]
     end_pressure = dfpressure.loc[landingtimeFL]
 
+    # TODO: How to handle NA. Should there even be NA in the pressure data?
     if pd.isna(start_pressure) or pd.isna(end_pressure):
         print(
             "Warning: NA values found in pressure data at takeoff or landing time."

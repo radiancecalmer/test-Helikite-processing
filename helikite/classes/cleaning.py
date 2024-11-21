@@ -92,7 +92,6 @@ class Cleaner:
             instrument.df = instrument.df_raw.copy(deep=True)
             instrument.date = flight_date
             instrument.pressure_column = self.pressure_column
-            instrument._rolling_window_column = None
             instrument.time_offset = {}
             instrument.time_offset["hour"] = time_offset.hour
             instrument.time_offset["minute"] = time_offset.minute
@@ -252,7 +251,7 @@ class Cleaner:
 
         for instrument in self._instruments:
             try:
-                instrument.pressure_column = column_name_override
+                instrument.pressure_column = self.pressure_column
                 instrument.df = (
                     instrument.set_housekeeping_pressure_offset_variable(
                         instrument.df, instrument.pressure_column
@@ -433,7 +432,7 @@ class Cleaner:
         [
             "set_time_as_index",
             "data_corrections",
-            "correct_time",
+            "correct_time_and_pressure",
         ],
         use_once=False,
     )
@@ -556,7 +555,6 @@ class Cleaner:
         self,
         instrument,
         window_size: int = 20,
-        column_name: str = constants.ROLLING_WINDOW_COLUMN_NAME,
     ):
         """Apply rolling window to the pressure measurements of instrument
 
@@ -567,17 +565,15 @@ class Cleaner:
                 f"Note: {instrument.name} does not have a pressure column"
             )
 
-        instrument.df[column_name] = (
+        instrument.df[instrument.pressure_column] = (
             instrument.df[instrument.pressure_column]
             .rolling(window=window_size)
             .mean()
         )
 
-        instrument._rolling_window_column = column_name
-
         print(
             f"Applied rolling window to pressure for {instrument.name}"
-            f" on column '{column_name}'"
+            f" on column '{instrument.pressure_column}'"
         )
 
     @function_dependencies(
@@ -748,6 +744,7 @@ class Cleaner:
     def correct_time_and_pressure(
         self,
         max_lag=180,
+        walk_time_seconds: int | None = None,
         apply_rolling_window_to: list[Instrument] = [],
         rolling_window_size: int = constants.ROLLING_WINDOW_DEFAULT_SIZE,
         reference_pressure_thresholds: tuple[float, float] | None = None,
@@ -770,31 +767,26 @@ class Cleaner:
             )
 
             # Apply the threshold to the reference instrument
-            self.reference_instrument.df[
-                constants.ROLLING_WINDOW_COLUMN_NAME
-            ] = self.reference_instrument.df[
-                self.reference_instrument.pressure_column
-            ].copy()
             self.reference_instrument.df.loc[
                 (
                     self.reference_instrument.df[
-                        constants.ROLLING_WINDOW_COLUMN_NAME
+                        self.reference_instrument.pressure_column
                     ]
                     > reference_pressure_thresholds[1]
                 )
                 | (
                     self.reference_instrument.df[
-                        constants.ROLLING_WINDOW_COLUMN_NAME
+                        self.reference_instrument.pressure_column
                     ]
                     < reference_pressure_thresholds[0]
                 ),
-                constants.ROLLING_WINDOW_COLUMN_NAME,
+                self.reference_instrument.pressure_column,
             ] = np.nan
             self.reference_instrument.df[
-                constants.ROLLING_WINDOW_COLUMN_NAME
+                self.reference_instrument.pressure_column
             ] = (
                 self.reference_instrument.df[
-                    constants.ROLLING_WINDOW_COLUMN_NAME
+                    self.reference_instrument.pressure_column
                 ]
                 .interpolate()
                 .rolling(window=rolling_window_size)
@@ -803,7 +795,7 @@ class Cleaner:
             print(
                 f"Applied threshold of {reference_pressure_thresholds} to "
                 f"{self.reference_instrument.name} on "
-                f"column '{constants.ROLLING_WINDOW_COLUMN_NAME}'"
+                f"column '{self.reference_instrument.pressure_column}'"
             )
 
         # Apply rolling window to pressure
@@ -812,7 +804,7 @@ class Cleaner:
                 self._apply_rolling_window_to_pressure(
                     instrument,
                     window_size=rolling_window_size,
-                    column_name=instrument.pressure_variable,
+                    column_name=instrument.pressure_column,
                 )
 
         # 0 is ignore because it's at the beginning of the df_corr, not
@@ -852,18 +844,15 @@ class Cleaner:
                     right_index=True,
                 )
 
+        takeofftime = df_pressure.index.asof(pd.Timestamp(self.time_trim_from))
+        landingtime = df_pressure.index.asof(pd.Timestamp(self.time_trim_to))
+
         if detrend_pressure_on:
             print("Index of df_pressure", df_pressure.index)
             print("self.time_trim_from", self.time_trim_from)
             print("self.time_trim_to", self.time_trim_to)
             print("Columns of df_pressure", df_pressure.columns)
             print(df_pressure)
-            takeofftime = df_pressure.index.asof(
-                pd.Timestamp(self.time_trim_from)
-            )
-            landingtime = df_pressure.index.asof(
-                pd.Timestamp(self.time_trim_to)
-            )
             if takeofftime is None or landingtime is None:
                 raise ValueError(
                     "Could not find takeoff or landing time in the pressure "
@@ -887,7 +876,29 @@ class Cleaner:
                     f"Detrended pressure for {instrument.name} on column "
                     f"'{instrument.pressure_column}'"
                 )
+            if walk_time_seconds:
+                # Apply matchpress to correct pressure
+                pd_walk_time = pd.Timedelta(seconds=walk_time_seconds)
+                refpresFC = (
+                    df_pressure[self.reference_instrument.name]
+                    .loc[takeofftime - pd_walk_time : takeofftime]
+                    .mean()
+                )
 
+                for instrument in self._instruments:
+                    if instrument == self.reference_instrument:
+                        continue
+                    instrument.df[f"{instrument.pressure_column}_corr"] = (
+                        crosscorrelation.matchpress(
+                            instrument.df[instrument.pressure_column],
+                            refpresFC,
+                            takeofftime,
+                            pd_walk_time,
+                        )
+                    )
+                    print(
+                        f"Applied match pressure correction for {instrument.name}"
+                    )
         df_new = crosscorrelation.df_derived_by_shift(
             df_pressure,
             lag=max_lag,
