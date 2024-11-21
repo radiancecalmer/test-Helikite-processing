@@ -237,7 +237,7 @@ class Instrument(ABC):
     def detect_from_folder(
         self,
         input_folder: str,
-        lines_to_read=50,
+        lines_to_read=constants.QTY_LINES_TO_IDENTIFY_INSTRUMENT,
         quiet=False,
     ):
         """Scans an input folder for the instrument file
