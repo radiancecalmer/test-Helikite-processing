@@ -19,6 +19,14 @@ def campaign_data_location_2022():
         os.path.dirname(__file__), "resources", "campaigns", "20220929"
     )
 
+
+@pytest.fixture
+def campaign_data_location_2024_new_msesms():
+    return os.path.join(
+        os.path.dirname(__file__), "resources", "campaigns", "20241105"
+    )
+
+
 @pytest.fixture
 def campaign_data_location_2024():
     return os.path.join(
@@ -73,7 +81,9 @@ def campaign_file_paths_and_instruments_2022(campaign_data_location_2022):
     smart_tether.filename = os.path.join(
         campaign_data_location_2022, "LOG_20220929_A.csv"
     )
-    pops.filename = os.path.join(campaign_data_location_2022, "HK_20220929x001.csv")
+    pops.filename = os.path.join(
+        campaign_data_location_2022, "HK_20220929x001.csv"
+    )
     stap.filename = os.path.join(
         campaign_data_location_2022, "STAP_220929A0_processed.txt"
     )
@@ -101,6 +111,5 @@ def campaign_file_paths_and_instruments_2024(campaign_data_location_2024):
 
     # Add instruments to dictionary
     instruments["flight_computer"] = flight_computer_v2
-
 
     return instruments

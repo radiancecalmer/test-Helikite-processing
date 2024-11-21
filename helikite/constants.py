@@ -23,7 +23,7 @@ class Constants(BaseSettings):
     LOGFILE_NAME: str = "helikite.log"
     LOGLEVEL_CONSOLE: str = "INFO"
     LOGLEVEL_FILE: str = "DEBUG"
-    QTY_LINES_TO_IDENTIFY_INSTRUMENT: int = 50
+    QTY_LINES_TO_IDENTIFY_INSTRUMENT: int = 60
 
     # Cross correlation
     CROSSCORRELATION_DEFAULT_LAG: int = 10

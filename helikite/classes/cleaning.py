@@ -482,9 +482,6 @@ class Cleaner:
     @function_dependencies(
         [
             "merge_instruments",
-            "set_pressure_column",
-            "set_time_as_index",
-            "correct_time",
             "remove_duplicates",
         ],
         use_once=False,

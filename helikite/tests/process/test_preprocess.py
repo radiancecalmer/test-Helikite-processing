@@ -1,5 +1,6 @@
 import os
 import sys
+from helikite.constants import constants
 
 # Append the root directory of your project to the system path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -15,7 +16,9 @@ from helikite.instruments import (  # noqa
 )
 
 
-def test_detect_file(campaign_data_location_2022: str, campaign_data_location_2024: str):
+def test_detect_file(
+    campaign_data_location_2022: str, campaign_data_location_2024: str
+):
     """Test that the correct file type is detected"""
 
     for filename in os.listdir(campaign_data_location_2022):
@@ -24,7 +27,10 @@ def test_detect_file(campaign_data_location_2022: str, campaign_data_location_20
 
             with open(full_path) as in_file:
                 # Read the first set of lines for headers
-                header_lines = [next(in_file) for x in range(50)]
+                header_lines = [
+                    next(in_file)
+                    for x in range(constants.QTY_LINES_TO_IDENTIFY_INSTRUMENT)
+                ]
 
             if filename == "LOG_20220929.txt":
                 assert flight_computer_v1.file_identifier(header_lines) is True
@@ -47,7 +53,10 @@ def test_detect_file(campaign_data_location_2022: str, campaign_data_location_20
 
             with open(full_path) as in_file:
                 # Read the first set of lines for headers
-                header_lines = [next(in_file) for x in range(50)]
+                header_lines = [
+                    next(in_file)
+                    for x in range(constants.QTY_LINES_TO_IDENTIFY_INSTRUMENT)
+                ]
 
             if filename == "HFC_240926_3.csv":
                 assert flight_computer_v2.file_identifier(header_lines) is True
@@ -61,7 +70,10 @@ def test_detect_file_collisions(campaign_data_location_2022: str):
 
             with open(full_path) as in_file:
                 # Read the first set of lines for headers
-                header_lines = [next(in_file) for x in range(50)]
+                header_lines = [
+                    next(in_file)
+                    for x in range(constants.QTY_LINES_TO_IDENTIFY_INSTRUMENT)
+                ]
 
             for instrument in [
                 flight_computer_v1,
@@ -80,3 +92,25 @@ def test_detect_file_collisions(campaign_data_location_2022: str):
                         f"{len(instrument_detected)} instrument(s) identified "
                         f"the file {filename}"
                     )
+
+
+def test_msems_detection(campaign_data_location_2024_new_msesms: str):
+    """Test that only one instrument is identified"""
+    for filename in os.listdir(campaign_data_location_2024_new_msesms):
+        if not os.path.isdir(filename):
+            full_path = os.path.join(
+                campaign_data_location_2024_new_msesms, filename
+            )
+
+            with open(full_path) as in_file:
+                # Read the first set of lines for headers
+                header_lines = [
+                    next(in_file)
+                    for x in range(constants.QTY_LINES_TO_IDENTIFY_INSTRUMENT)
+                ]
+
+            is_detected = msems_inverted.file_identifier(header_lines)
+
+            assert (
+                is_detected is True
+            ), f"mSEMS instrument not detected in {filename}"

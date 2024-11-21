@@ -118,6 +118,11 @@ class MSEMSInverted(Instrument):
             "Bin_Dia2\tBin_Dia3"
         ) in first_lines_of_csv[0]:
             return True
+        if (
+            "#Date\tTime\tTemp(C)\tPress(hPa)\tNumBins\tBin_Dia1\t"
+            "Bin_Dia2\tBin_Dia3"
+        ) in first_lines_of_csv[55]:
+            return True
 
         return False
 
