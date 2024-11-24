@@ -63,42 +63,44 @@ def choose_outliers(df, x, y):
     variable_list = []
     df = df.fillna("")
     for variable in df.columns:
-        if (
-            variable == y
-            or variable == x
-            or not pd.api.types.is_numeric_dtype(df[variable])
-            or not df[variable].dtype in (int, float)
-            or df[variable].isnull().all()  # Has no values
-        ):
+        if variable == y or variable == x:
+            print("Skipping variable: ", variable)
             continue
-        # Replace null values with None to make them JSON compatible
-        # df[variable] = df[variable].where(pd.notnull(df[variable]), None)
 
-        # print("Variable: ", variable, df[variable].dtype)
         variable_list.append(
             dict(
-                args=[{x: df[x], y: df[variable]}],
+                args=[{"x": [df[variable]]}],
                 label=variable,
-                method="update",
+                method="restyle",
             )
         )
-    limited_variable_list = variable_list[0:11]
-    [
-        print("Variable: ", variable["label"])
-        for variable in limited_variable_list
-    ]
+
+    limited_variable_list = variable_list
     fig.update_layout(
         updatemenus=[
             dict(
                 buttons=limited_variable_list,
                 direction="down",
-                pad={"r": 10, "t": 10},
+                pad={"r": 5, "t": 5},
                 showactive=True,
                 x=0.1,
                 xanchor="left",
                 y=1.1,
                 yanchor="top",
             ),
+        ]
+    )
+
+    fig.update_layout(
+        annotations=[
+            dict(
+                text="Variable:",
+                showarrow=False,
+                x=0,
+                y=1.085,
+                yref="paper",
+                align="left",
+            )
         ]
     )
 
