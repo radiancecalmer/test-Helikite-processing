@@ -28,6 +28,8 @@ def choose_outliers(df, x, y, outlier_file="outliers.csv"):
     # on their index
     try:
         outliers = pd.read_csv(outlier_file)
+        outliers.set_index(outliers.columns[0], drop=True, inplace=True)
+
     except FileNotFoundError:
         print(f"Outlier file not found. Creating new one at {outlier_file}")
         outliers = pd.DataFrame(columns=df.columns)
@@ -49,6 +51,9 @@ def choose_outliers(df, x, y, outlier_file="outliers.csv"):
             selected_index = df.iloc[point_index]
             # print(f"Selected DF index: {selected_index}")
             print("X Variable: ", x)
+            # print("Trace X", trace.x)
+            print("Points X", points)
+            print("Trace name: ", points.trace_name)
             print(f"Selected x/y: {selected_x}/{selected_y}")
             print("Point at index: ", df.index[point_index])
             print(
@@ -65,22 +70,17 @@ def choose_outliers(df, x, y, outlier_file="outliers.csv"):
             # a new row. We can assume the columns of the outliers dataframe
             # are the same as the columns of the dataframe
             if selected_index.name in outliers.index:
-                outliers.loc[selected_index.name] = False
-                outliers.loc[selected_index.name, [x, y]] = True
+                outliers.loc[selected_index.name, [points.trace_name, y]] = (
+                    True
+                )
             else:
-                # new_row = pd.Series(
-                #     index=outliers.columns,
-                #     dtype=bool,
-                #     name=selected_index.name,
-                # )
-                # new_row.loc[[x, y]] = True
-                # outliers = pd.concat([outliers, new_row.to_frame().T])
+
                 new_row = pd.DataFrame(
                     [[False] * len(outliers.columns)],
                     columns=outliers.columns,
                     index=[selected_index.name],
                 )
-                new_row.loc[selected_index.name, [x, y]] = True
+                new_row.loc[selected_index.name, [points.trace_name, y]] = True
                 outliers = pd.concat([outliers, new_row])
             outliers.to_csv(outlier_file)
 
@@ -90,7 +90,7 @@ def choose_outliers(df, x, y, outlier_file="outliers.csv"):
         go.Scattergl(
             x=df[x],
             y=df[y],
-            name=y,
+            name=x,
             opacity=1,
             mode="markers",
             marker=dict(
@@ -111,7 +111,6 @@ def choose_outliers(df, x, y, outlier_file="outliers.csv"):
             ],
         )
     )
-    # fig.update_xaxes(range=[df[x].min(), df[x].max()])
 
     # Attach the callback to all traces
     for trace in fig.data:
@@ -126,22 +125,20 @@ def choose_outliers(df, x, y, outlier_file="outliers.csv"):
         if variable == y:
             # Skip the x and y variables for the list
             continue
-
         variable_list.append(
             dict(
                 args=[
-                    {"x": [df[variable]]},
+                    {"x": [df[variable]], "name": variable},
                 ],
                 label=variable,
                 method="restyle",
             )
         )
 
-    limited_variable_list = variable_list
     fig.update_layout(
         updatemenus=[
             dict(
-                buttons=limited_variable_list,
+                buttons=variable_list,
                 direction="down",
                 pad={"r": 5, "t": 5},
                 showactive=True,
