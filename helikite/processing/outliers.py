@@ -23,6 +23,15 @@ def choose_outliers(df, x, y, outlier_file="outliers.csv"):
     df = df.copy()
     selected_points = []
 
+    # If outlier file exists, load it. Otherwise, create a new one with the
+    # same columns as the dateframe, to allow for appending new outliers based
+    # on their index
+    try:
+        outliers = pd.read_csv(outlier_file)
+    except FileNotFoundError:
+        print(f"Outlier file not found. Creating new one at {outlier_file}")
+        outliers = pd.DataFrame(columns=df.columns)
+
     @out.capture(clear_output=True)
     def select_point_callback(trace, points, selector):
         # Callback function for click events to select points
@@ -72,7 +81,10 @@ def choose_outliers(df, x, y, outlier_file="outliers.csv"):
                 ),
             ),
             hoverinfo="text",
-            text=[f"Time: {time}" for time in df.index],
+            text=[
+                f"Time: {time} X: {x_val} Y: {y_val}"
+                for time, x_val, y_val in zip(df.index, df[x], df[y])
+            ],
         )
     )
 
@@ -86,8 +98,8 @@ def choose_outliers(df, x, y, outlier_file="outliers.csv"):
     variable_list = []
     df = df.fillna("")
     for variable in df.columns:
-        if variable == y or variable == x:
-            print("Skipping variable: ", variable)
+        if variable == y:
+            # Skip the x and y variables for the list
             continue
 
         variable_list.append(
