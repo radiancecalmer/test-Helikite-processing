@@ -21,6 +21,24 @@ def choose_outliers(df, x, y):
     out = Output()
     out.append_stdout("Click on a point to set as outlier.\n")
     df = df.copy()
+
+    # Index must be a datetime object for the plot to work
+    if not isinstance(df.index, pd.DatetimeIndex):
+        potential_columns = []
+        for col in df.columns:
+            try:
+                if "time" in col.lower() or "date" in col.lower():
+                    potential_columns.append(col)
+            except ValueError:
+                continue
+        raise ValueError(
+            "Index must be a DatetimeIndex for interactive plot to work. "
+            "Use command `df.index = pd.to_datetime(df.index)` to convert "
+            "index to datetime. It may be necessary to set the index to a "
+            "datetime column in the dataframe first. Potential columns to use "
+            "as index:\n"
+            f"\n\t{"\n\t".join(potential_columns)}"
+        )
     selected_points = []
 
     @out.capture(clear_output=True)
@@ -53,12 +71,9 @@ def choose_outliers(df, x, y):
         )
     )
 
-    # Attach the callback to all traces
     for trace in fig.data:
-        # Only allow the reference instrument to be clickable
-        # if trace.name == self.reference_instrument.name:
+        # Attach the callback to the traces
         trace.on_click(select_point_callback)
-        print(f"Callback attached to trace: {trace.name}")
 
     variable_list = []
     df = df.fillna("")
@@ -104,33 +119,6 @@ def choose_outliers(df, x, y):
         ]
     )
 
-    # fig.update_layout(
-    #     updatemenus=[
-    #         dict(
-    #             buttons=list(
-    #                 [
-    #                     dict(
-    #                         args=["type", "surface"],
-    #                         label="3D Surface",
-    #                         method="restyle",
-    #                     ),
-    #                     dict(
-    #                         args=["type", "heatmap"],
-    #                         label="Heatmap",
-    #                         method="restyle",
-    #                     ),
-    #                 ]
-    #             ),
-    #             direction="down",
-    #             pad={"r": 10, "t": 10},
-    #             showactive=True,
-    #             x=0.1,
-    #             xanchor="left",
-    #             y=1.1,
-    #             yanchor="top",
-    #         ),
-    #     ]
-    # )
     # Customize plot layout
     fig.update_layout(
         title=f"{y} vs {x}",
