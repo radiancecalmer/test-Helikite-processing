@@ -35,6 +35,7 @@ def choose_outliers(df, x, y, outlier_file="outliers.csv"):
     @out.capture(clear_output=True)
     def select_point_callback(trace, points, selector):
         # Callback function for click events to select points
+        nonlocal outliers
         if points.point_inds:
             point_index = points.point_inds[0]
             print(f"Point index1: {points.point_inds}")
@@ -46,7 +47,7 @@ def choose_outliers(df, x, y, outlier_file="outliers.csv"):
             # Get the index of the selected point from the dataframe
             selected_index = df[(df[x] == selected_x) & (df[y] == selected_y)]
             selected_index = df.iloc[point_index]
-            print(f"Selected DF index: {selected_index}")
+            # print(f"Selected DF index: {selected_index}")
             print("X Variable: ", x)
             print(f"Selected x/y: {selected_x}/{selected_y}")
             print("Point at index: ", df.index[point_index])
@@ -57,22 +58,45 @@ def choose_outliers(df, x, y, outlier_file="outliers.csv"):
             )
             selected_points.append((selected_x, selected_y))
 
+            # Append the selected point to the outliers dataframe by adding or
+            # updating a row with the selected point's index, where the
+            # corresponding outlier columns are set to true and the rest false.
+            # If a row already exists at that index, update it, otherwise add
+            # a new row. We can assume the columns of the outliers dataframe
+            # are the same as the columns of the dataframe
+            if selected_index.name in outliers.index:
+                outliers.loc[selected_index.name] = False
+                outliers.loc[selected_index.name, [x, y]] = True
+            else:
+                # new_row = pd.Series(
+                #     index=outliers.columns,
+                #     dtype=bool,
+                #     name=selected_index.name,
+                # )
+                # new_row.loc[[x, y]] = True
+                # outliers = pd.concat([outliers, new_row.to_frame().T])
+                new_row = pd.DataFrame(
+                    [[False] * len(outliers.columns)],
+                    columns=outliers.columns,
+                    index=[selected_index.name],
+                )
+                new_row.loc[selected_index.name, [x, y]] = True
+                outliers = pd.concat([outliers, new_row])
+            outliers.to_csv(outlier_file)
+
+            print(outliers)
+
     fig.add_trace(
         go.Scattergl(
             x=df[x],
             y=df[y],
             name=y,
-            # line=dict(width=2, color="red"),
             opacity=1,
             mode="markers",
-            # hoverinfo="skip",
             marker=dict(
-                color=df.index.to_series().astype(
-                    int
-                ),  # Convert datetime to int for coloring
+                color=df.index.to_series().astype(int),
                 colorscale="Viridis",
                 colorbar=dict(
-                    # title="Time",
                     tickvals=[df.index.min().value, df.index.max().value],
                     ticktext=[
                         df.index.min().strftime("%Y-%m-%d %H:%M:%S"),
@@ -87,6 +111,7 @@ def choose_outliers(df, x, y, outlier_file="outliers.csv"):
             ],
         )
     )
+    # fig.update_xaxes(range=[df[x].min(), df[x].max()])
 
     # Attach the callback to all traces
     for trace in fig.data:
@@ -104,7 +129,9 @@ def choose_outliers(df, x, y, outlier_file="outliers.csv"):
 
         variable_list.append(
             dict(
-                args=[{"x": [df[variable]]}],
+                args=[
+                    {"x": [df[variable]]},
+                ],
                 label=variable,
                 method="restyle",
             )
