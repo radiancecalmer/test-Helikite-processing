@@ -3,7 +3,7 @@ from ipywidgets import Output, VBox
 import pandas as pd
 
 
-def choose_outliers(df, x, y):
+def choose_outliers(df, x, y, outlier_file="outliers.csv"):
     """Creates a plot to interactively select outliers in the data
 
     A plot is generated, where two variables are plotted, and the user can
@@ -21,24 +21,6 @@ def choose_outliers(df, x, y):
     out = Output()
     out.append_stdout("Click on a point to set as outlier.\n")
     df = df.copy()
-
-    # Index must be a datetime object for the plot to work
-    if not isinstance(df.index, pd.DatetimeIndex):
-        potential_columns = []
-        for col in df.columns:
-            try:
-                if "time" in col.lower() or "date" in col.lower():
-                    potential_columns.append(col)
-            except ValueError:
-                continue
-        raise ValueError(
-            "Index must be a DatetimeIndex for interactive plot to work. "
-            "Use command `df.index = pd.to_datetime(df.index)` to convert "
-            "index to datetime. It may be necessary to set the index to a "
-            "datetime column in the dataframe first. Potential columns to use "
-            "as index:\n"
-            f"\n\t{"\n\t".join(potential_columns)}"
-        )
     selected_points = []
 
     @out.capture(clear_output=True)
@@ -46,18 +28,25 @@ def choose_outliers(df, x, y):
         # Callback function for click events to select points
         if points.point_inds:
             point_index = points.point_inds[0]
-            print(f"Point index: {point_index}")
-            print("Trace", trace)
+            print(f"Point index1: {points.point_inds}")
+            print(f"Point index2: {point_index}")
+            # print("Trace", trace)
             selected_x = trace.x[point_index]
             selected_y = trace.y[point_index]
 
             # Get the index of the selected point from the dataframe
             selected_index = df[(df[x] == selected_x) & (df[y] == selected_y)]
+            selected_index = df.iloc[point_index]
             print(f"Selected DF index: {selected_index}")
-
+            print("X Variable: ", x)
+            print(f"Selected x/y: {selected_x}/{selected_y}")
+            print("Point at index: ", df.index[point_index])
+            print(
+                "Variable x and y at index: ",
+                df[x].iloc[point_index],
+                df[y].iloc[point_index],
+            )
             selected_points.append((selected_x, selected_y))
-            print(f"Selected point: {selected_x}")
-            print("Points selected: ", selected_points)
 
     fig.add_trace(
         go.Scattergl(
@@ -68,12 +57,31 @@ def choose_outliers(df, x, y):
             opacity=1,
             mode="markers",
             # hoverinfo="skip",
+            marker=dict(
+                color=df.index.to_series().astype(
+                    int
+                ),  # Convert datetime to int for coloring
+                colorscale="Viridis",
+                colorbar=dict(
+                    # title="Time",
+                    tickvals=[df.index.min().value, df.index.max().value],
+                    ticktext=[
+                        df.index.min().strftime("%Y-%m-%d %H:%M:%S"),
+                        df.index.max().strftime("%Y-%m-%d %H:%M:%S"),
+                    ],
+                ),
+            ),
+            hoverinfo="text",
+            text=[f"Time: {time}" for time in df.index],
         )
     )
 
+    # Attach the callback to all traces
     for trace in fig.data:
-        # Attach the callback to the traces
+        # Only allow the reference instrument to be clickable
+        # if trace.name == self.reference_instrument.name:
         trace.on_click(select_point_callback)
+        print(f"Callback attached to trace: {trace.name}")
 
     variable_list = []
     df = df.fillna("")
@@ -116,9 +124,37 @@ def choose_outliers(df, x, y):
                 yref="paper",
                 align="left",
             )
-        ]
+        ],
+        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
     )
 
+    # fig.update_layout(
+    #     updatemenus=[
+    #         dict(
+    #             buttons=list(
+    #                 [
+    #                     dict(
+    #                         args=["type", "surface"],
+    #                         label="3D Surface",
+    #                         method="restyle",
+    #                     ),
+    #                     dict(
+    #                         args=["type", "heatmap"],
+    #                         label="Heatmap",
+    #                         method="restyle",
+    #                     ),
+    #                 ]
+    #             ),
+    #             direction="down",
+    #             pad={"r": 10, "t": 10},
+    #             showactive=True,
+    #             x=0.1,
+    #             xanchor="left",
+    #             y=1.1,
+    #             yanchor="top",
+    #         ),
+    #     ]
+    # )
     # Customize plot layout
     fig.update_layout(
         title=f"{y} vs {x}",
